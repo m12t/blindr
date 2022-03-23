@@ -16,3 +16,6 @@ hardware:
 - 3 position momentary toggle switch for manually controlling the blinds
 - 5V power supply (used by Pico and stepper motor)
 - 3D printed housing for the unit
+
+
+for articulating the blind position, use revolutions at first. 8 turns goes from shut with slats up to shut with slats down. 4.5 turns _up_ from down gets to middle, 4 turns _down_ from top gets to middle. Other options are something like a mems gyro + accelerometer like the MPU-6050 mounted on one of the blinds to gauge angle for more precise control.
