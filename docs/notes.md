@@ -19,3 +19,9 @@ hardware:
 
 
 for articulating the blind position, use revolutions at first. 8 turns goes from shut with slats up to shut with slats down. 4.5 turns _up_ from down gets to middle, 4 turns _down_ from top gets to middle. Other options are something like a mems gyro + accelerometer like the MPU-6050 mounted on one of the blinds to gauge angle for more precise control.
+
+GPS Module requirements:
+- cost effective
+	- high precision is not needed
+- low power consumption
+	- low update rate is acceptible since the Pico has an onboard RTC that can be trusted in between updates.
