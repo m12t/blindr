@@ -8,7 +8,11 @@ The project uses a microcontroller and a GPS module to open and close window bli
 hardware:
 - microcontroller (Raspberry Pi Pico)
 - stepper motor (TBD)
-- stepper motor driver (n/a, controlled with code from the Pico)
+- stepper motor driver (trinamic TMC2130)
+	- form factor: module
+	- chip: TMC2130
+	- the TMC2130 permits 256 for virtually silent operation
+	- stall detection for sensorless position finding (open and close limits on the blinds)
 - GPS module (for getting position data AND time data)
 	- this eliminates the need for an RTC module because GPS provides time data
 	- this also allows this code to be used by anyone on Earth as-is
