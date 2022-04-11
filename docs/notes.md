@@ -6,26 +6,28 @@ The project uses a microcontroller and a GPS module to open and close window bli
 
 
 hardware:
-- microcontroller (Raspberry Pi Pico)
-- stepper motor (TBD)
-- stepper motor driver (trinamic TMC2130)
+- ✅ microcontroller (Raspberry Pi Pico)
+- ✅ stepper motor (STP-42D201-37; see `/stepper.md`)
+- stepper motor driver (trinamic TMC2130 or 2209)
 	- form factor: module
 	- chip: TMC2130
 	- the TMC2130 permits 256 for virtually silent operation
 	- stall detection for sensorless position finding (open and close limits on the blinds)
+	- this requires a decoupling capacitor (100 uF) to the motor power supply
+	- must be able to supply 1.7A peak for the stepper
 - GPS module (for getting position data AND time data)
 	- this eliminates the need for an RTC module because GPS provides time data
 	- this also allows this code to be used by anyone on Earth as-is
 	- Intuitively, blinds go on windows which look outside, so signal strength should be strong
 - 3 position momentary toggle switch for manually controlling the blinds
-- 5V power supply (used by Pico and stepper motor)
+- 5V power supply (used by Pico)
+- stepper power supply
 - 3D printed housing for the unit
 
-
-for articulating the blind position, use revolutions at first. 8 turns goes from shut with slats up to shut with slats down. 4.5 turns _up_ from down gets to middle, 4 turns _down_ from top gets to middle. Other options are something like a mems gyro + accelerometer like the MPU-6050 mounted on one of the blinds to gauge angle for more precise control.
 
 GPS Module requirements:
 - cost effective
 	- high precision is not needed
 - low power consumption
-	- low update rate is acceptible since the Pico has an onboard RTC that can be trusted in between updates.
+	- low update rate is acceptible since the Pico has an onboard RTC that can be trusted in between updates
+	- best if it can be shut down and turned on as needed by the pico. Is it as simple as powering it off the pico and pulling the GPS module to ground?
