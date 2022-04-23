@@ -92,8 +92,8 @@ leapyear = is_leapyear(year)
 minute = 1
 second = 1
 timezone = -5  # from UTC
-latitude = None
-longitude = None
+latitude = 44.97
+longitude = -93.25
 
 gamma = get_gamma(108, 24)
 eqtime = get_eqtime(gamma)
