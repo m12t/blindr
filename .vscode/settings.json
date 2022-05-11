@@ -1,0 +1,3 @@
+{
+    "cmake.environment": {"PICO_SDK_PATH":"Users/mike/pico-sdk"}
+}
