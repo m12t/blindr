@@ -17,28 +17,24 @@ int main() {
     gpio_put(SLEEP_PIN, 0);
 
     int counter = 0;
-    while (counter < 10) {
+    while (true) {
         printf("inside main while count: %d\n", counter);
         if (counter % 2 == 0) {
             gpio_put(DIRECTION_PIN, 1);
         } else {
             gpio_put(DIRECTION_PIN, 0);
         }
+        gpio_put(SLEEP_PIN, 1);
+        sleep_ms(2);  // per instructions, leave >1ms after sleep before step input
 
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 10000; i++) {
             gpio_put(STEP_PIN, 0);
-            sleep_ms(1);
+            sleep_us(30);
             gpio_put(STEP_PIN, 1);
-            sleep_ms(1);
+            sleep_us(30);
         }
-
-        if (counter > 4) {
-            printf("Sleeping...\n");
-            gpio_put(SLEEP_PIN, 1);
-            sleep_ms(10000);
-            printf("Awake?\n");
-
-        }
+        gpio_put(SLEEP_PIN, 0);
+        sleep_ms(2000);
         counter++;
     }
 
