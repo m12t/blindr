@@ -134,7 +134,7 @@ dmypy.json
 *.fcstd1
 
 # Pico CMakeLists
-CMakeLists.txt
+**/CMakeLists.txt
 
 # Pico sdk import
 pico_sdk_import.cmake
