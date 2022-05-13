@@ -12,9 +12,9 @@ int main() {
     while (true) {
         printf("Hello, world!\n");
         gpio_put(LED, 1);
-        sleep_ms(500);
+        sleep_ms(50);
         gpio_put(LED, 0);
-        sleep_ms(500);
+        sleep_ms(50);
     }
     return 0;
 #endif
