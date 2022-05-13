@@ -133,11 +133,11 @@ dmypy.json
 # freeCAD backup files
 *.fcstd1
 
-# # Pico CMakeLists
-# CMakeLists.txt
+# Pico CMakeLists
+CMakeLists.txt
 
-# # Pico sdk import
-# pico_sdk_import.cmake
+# Pico sdk import
+pico_sdk_import.cmake
 
-# # vscode settings directory
-# .vscode/
+# vscode settings directory
+.vscode/
