@@ -148,3 +148,10 @@ pico_sdk_import.cmake
 **.tcl
 
 **.cmake
+
+# gcode files
+*.gcode
+gcode/
+
+# prusa slicer files
+*.3mf
