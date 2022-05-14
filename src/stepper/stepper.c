@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h>  // for debugging
 #include "pico/stdlib.h"
 
 #define SLEEP_PIN 13
@@ -6,6 +6,7 @@
 #define DIRECTION_PIN 15
 
 int main() {
+    stdio_init_all();  // for debugging and prining to console
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
     gpio_init(DIRECTION_PIN);
@@ -20,8 +21,10 @@ int main() {
     while (true) {
         printf("inside main while count: %d\n", counter);
         if (counter % 2 == 0) {
+            printf("going forwards\n");
             gpio_put(DIRECTION_PIN, 1);
         } else {
+            printf("going backwards\n");
             gpio_put(DIRECTION_PIN, 0);
         }
         gpio_put(SLEEP_PIN, 1);
@@ -31,9 +34,9 @@ int main() {
             gpio_put(STEP_PIN, 0);
             sleep_us(30);
             gpio_put(STEP_PIN, 1);
-            sleep_us(30);
         }
         gpio_put(SLEEP_PIN, 0);
+        printf("sleeping...\n");
         sleep_ms(2000);
         counter++;
     }
