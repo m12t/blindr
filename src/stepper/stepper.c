@@ -1,6 +1,9 @@
 #include <stdio.h>  // for debugging
 #include "pico/stdlib.h"
 
+// any free gpio pins can work for the below,
+// orient wherever it is easiest for soldering
+// and use with the GPS module.
 #define SLEEP_PIN 13
 #define STEP_PIN 14
 #define DIRECTION_PIN 15
