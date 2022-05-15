@@ -15,7 +15,7 @@
 #define UART_ID uart1
 #define BAUD_RATE 9600
 #define DATA_BITS 8
-#define STOP_BITS 0
+#define STOP_BITS 1
 #define PARITY    UART_PARITY_NONE
 
 // We are using pins 0 and 1, but see the GPIO function select table in the
@@ -38,10 +38,9 @@ void on_uart_rx() {
     }
 }
 
-int main() {
-    // Set up our UART with a basic baud rate.
+void setup() {
+    printf("\n\n Initializing... \n");
     stdio_init_all();
-    printf("in Uart Advanced main...\n");
     uart_init(UART_ID, 9600);
 
     // Set the TX and RX pins by using the function select on the GPIO
@@ -79,6 +78,11 @@ int main() {
     // Lets send a basic string out, and then run a loop and wait for RX interrupts
     // The handler will count them, but also reflect the incoming data back with a slight change!
     // uart_puts(UART_ID, "\nHello, uart interrupts\n");
+}
+
+
+int main() {
+    setup();
 
     while (1)
         tight_loop_contents();
