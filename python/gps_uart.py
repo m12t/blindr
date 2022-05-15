@@ -1,4 +1,4 @@
-""" found from:
+""" adapted found from:
 https://microcontrollerslab.com/neo-6m-gps-module-raspberry-pi-pico-micropython/
 
 used to debug the uart and print the GPS module output to the repl.
@@ -19,6 +19,7 @@ longitude = ""
 satellites = ""
 GPStime = ""
 
+
 def getGPS(gpsModule):
     global FIX_STATUS, TIMEOUT, latitude, longitude, satellites, GPStime
     
@@ -27,18 +28,20 @@ def getGPS(gpsModule):
         gpsModule.readline()
         buff = str(gpsModule.readline())
         parts = buff.split(',')
-        print(parts)
-    
-        if (parts[0] == "b'$GPGGA" and len(parts) == 15):
+        if ("VTG" in parts[0]):
+            print('*found VTG*')
+            print(parts)
+            print('**')
+        if ("GGA" in parts[0] and len(parts) == 15):
+            print('found gga')
             if(parts[1] and parts[2] and parts[3] and parts[4] and parts[5] and parts[6] and parts[7]):
-                print(buff)
-                
+                # print(buff)
                 latitude = convertToDegree(parts[2])
                 if (parts[3] == 'S'):
-                    latitude = -latitude
+                    latitude = -float(latitude)
                 longitude = convertToDegree(parts[4])
                 if (parts[5] == 'W'):
-                    longitude = -longitude
+                    longitude = -float(longitude)
                 satellites = parts[7]
                 GPStime = parts[1][0:2] + ":" + parts[1][2:4] + ":" + parts[1][4:6]
                 FIX_STATUS = True
@@ -66,10 +69,10 @@ while True:
 
     if(FIX_STATUS == True):
         print("Printing GPS data...\n")
-        print("Latitude: "+latitude)
-        print("Longitude: "+longitude)
-        print("Satellites: " +satellites)
-        print("Time: "+GPStime)
+        print(f"Latitude: {latitude}")
+        print(f"Longitude: {longitude}")
+        print(f"Satellites: {satellites}")
+        print(f"Time: {GPStime}")
         print("----------------------")
         
         FIX_STATUS = False
