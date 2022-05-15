@@ -46,7 +46,6 @@ def getGPS(gpsModule):
                 GPStime = parts[1][0:2] + ":" + parts[1][2:4] + ":" + parts[1][4:6]
                 FIX_STATUS = True
                 break
-                
         if (time.time() > timeout):
             TIMEOUT = True
             break
@@ -61,10 +60,9 @@ def convertToDegree(RawDegrees):
     Converted = float(firstdigits + nexttwodigits/60.0)
     Converted = '{0:.6f}'.format(Converted) 
     return str(Converted)
-    
-    
+
 while True:
-    
+
     getGPS(gpsModule)
 
     if(FIX_STATUS == True):
@@ -74,9 +72,8 @@ while True:
         print(f"Satellites: {satellites}")
         print(f"Time: {GPStime}")
         print("----------------------")
-        
         FIX_STATUS = False
-        
+
     if(TIMEOUT == True):
         print(f"No GPS data is found.")
         TIMEOUT = False

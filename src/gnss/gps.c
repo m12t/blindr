@@ -11,8 +11,8 @@
 #define STOP_BITS 0
 #define PARITY UART_PARITY_NONE
 
-#define UART_TX_PIN 6
-#define UART_RX_PIN 7
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
 
 static int chars_rxed = 0;
 const uint LED = PICO_DEFAULT_LED_PIN;

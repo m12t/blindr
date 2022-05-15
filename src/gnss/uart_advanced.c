@@ -12,16 +12,16 @@
 
 /// \tag::uart_advanced[]
 
-#define UART_ID uart0
+#define UART_ID uart1
 #define BAUD_RATE 9600
 #define DATA_BITS 8
-#define STOP_BITS 1
+#define STOP_BITS 0
 #define PARITY    UART_PARITY_NONE
 
 // We are using pins 0 and 1, but see the GPIO function select table in the
 // datasheet for information on which other pins can be used.
-#define UART_TX_PIN 6
-#define UART_RX_PIN 7
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
 
 static int chars_rxed = 0;
 
@@ -32,8 +32,7 @@ void on_uart_rx() {
         // Can we send it back?
         if (uart_is_writable(UART_ID)) {
             // Change it slightly first!
-            ch++;
-            uart_putc(UART_ID, ch);
+            printf("%c", ch);
         }
         chars_rxed++;
     }
@@ -42,7 +41,7 @@ void on_uart_rx() {
 int main() {
     // Set up our UART with a basic baud rate.
     stdio_init_all();
-    printf("in UA main\n");
+    printf("in Uart Advanced main...\n");
     uart_init(UART_ID, 9600);
 
     // Set the TX and RX pins by using the function select on the GPIO
@@ -53,7 +52,7 @@ int main() {
     // Actually, we want a different speed
     // The call will return the actual baud rate selected, which will be as close as
     // possible to that requested
-    int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
+    // int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
 
     // Set UART flow control CTS/RTS, we don't want these, so turn them off
     uart_set_hw_flow(UART_ID, false, false);
@@ -79,7 +78,7 @@ int main() {
     // OK, all set up.
     // Lets send a basic string out, and then run a loop and wait for RX interrupts
     // The handler will count them, but also reflect the incoming data back with a slight change!
-    uart_puts(UART_ID, "\nHello, uart interrupts\n");
+    // uart_puts(UART_ID, "\nHello, uart interrupts\n");
 
     while (1)
         tight_loop_contents();
