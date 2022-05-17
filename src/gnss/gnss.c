@@ -24,24 +24,18 @@
 #define UART_RX_PIN 5
 
 
-// RX interrupt handler
-void on_uart_rx() {
-    char buffer[255];
+int parse_lines(char *buffer) {
     int i = 0;
     uint8_t ch;
-    char id[3];
     while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '$') {
         buffer[i++] = ch;
     }
-    // while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '\n') {
-    //     buffer[i++] = ch;
-    // }
-    // while (uart_is_readable(UART_ID)) {
-    //     ch = uart_getc(UART_ID);
-    //     if (ch == '\n')
-    //         printf("found a newline\n");
-    //     printf("%c", ch);
-    // }
+}
+
+// RX interrupt handler
+void on_uart_rx() {
+    char buffer[255];
+    parse_lines(buffer);
     printf("%s", buffer);
 }
 
