@@ -41,14 +41,27 @@ int split_lines(char *buffer, bool print, size_t buffer_len) {
     //         printf("uart not readable");
     //     buffer[i++] = ch;
     // }
-    parse_line(buffer, field, 20);
     if (print)  // print the buffer to the console
         console_print(buffer);
-    printf("MSG type  :%s\r\n",field[0]);
-    printf("UTC Time  :%s\r\n",field[1]);
-    printf("Latitude  :%s\r\n",field[2]);
-    printf("Longitude :%s\r\n",field[4]);
-    printf("Satellites:%s\r\n",field[7]);
+    char *idx = strstr(buffer, "GGA");
+    if (idx) {
+        printf("found GGA!");
+        i = parse_line(idx, field, 20);
+        printf("\n\nUTC Time  :%s\r\n",field[1]);
+        printf("Latitude  :%s\r\n",field[2]);
+        printf("Longitude :%s\r\n",field[4]);
+        printf("Altitude  :%s\r\n",field[9]);
+        printf("Satellites:%s\r\n\n",field[7]);
+    }
+    // if (strncmp(&buffer[3], "GGA", 3) == 0) {
+    //     i = parse_line(buffer, field, 20);
+    //     //debug_print_fields(i,field);
+    //     printf("\n\nUTC Time  :%s\r\n",field[1]);
+    //     printf("Latitude  :%s\r\n",field[2]);
+    //     printf("Longitude :%s\r\n",field[4]);
+    //     printf("Altitude  :%s\r\n",field[9]);
+    //     printf("Satellites:%s\r\n\n",field[7]);
+    // }
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
@@ -70,7 +83,7 @@ int console_print(char *buffer) {
 void on_uart_rx() {
     size_t len = 255;
     char buffer[len];
-    split_lines(buffer, false, len);
+    split_lines(buffer, true, len);
 }
 
 void setup() {
