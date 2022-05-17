@@ -26,36 +26,36 @@
 
 
 // function prototypes
-int split_lines(char *buffer, bool print);
+int split_lines(char *buffer, bool print, size_t buffer_len);
 int parse_line(char *buffer, char **fields, int max_fields);
 int console_print(char *buffer);
 void on_uart_rx();
 
-int split_lines(char *buffer, bool print) {
+int split_lines(char *buffer, bool print, size_t buffer_len) {
     int i = 0;
     uint8_t ch;
     char *field[20];
-    uart_read_blocking(UART_ID, buffer, 255);
+    uart_read_blocking(UART_ID, buffer, buffer_len);
     // while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '$') {
     //     if (!uart_is_readable(UART_ID))
     //         printf("uart not readable");
     //     buffer[i++] = ch;
     // }
+    parse_line(buffer, field, 20);
     if (print)  // print the buffer to the console
         console_print(buffer);
-    parse_line(buffer, field, 20);
-    // printf("MSG type  :%s\r\n",field[0]);
-    // printf("UTC Time  :%s\r\n",field[1]);
-    // printf("Latitude  :%s\r\n",field[2]);
-    // printf("Longitude :%s\r\n",field[4]);
-    // printf("Satellites:%s\r\n",field[7]);
+    printf("MSG type  :%s\r\n",field[0]);
+    printf("UTC Time  :%s\r\n",field[1]);
+    printf("Latitude  :%s\r\n",field[2]);
+    printf("Longitude :%s\r\n",field[4]);
+    printf("Satellites:%s\r\n",field[7]);
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
     int i = 0;
 	fields[i++] = buffer;
 
-	while ((i < max_fields) && (*buffer = strchr(buffer, ',') != NULL)) {
+	while ((i < max_fields) && NULL != (buffer = strchr(buffer, ','))) {
 		*buffer = '\0';  // change the comma to an end of string NULL character
 		fields[i++] = ++buffer;
 	}
@@ -68,8 +68,9 @@ int console_print(char *buffer) {
 
 // RX interrupt handler
 void on_uart_rx() {
-    char buffer[255];
-    split_lines(buffer, true);
+    size_t len = 255;
+    char buffer[len];
+    split_lines(buffer, false, len);
 }
 
 void setup() {
