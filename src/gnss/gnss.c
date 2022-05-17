@@ -36,32 +36,21 @@ int split_lines(char *buffer, bool print, size_t buffer_len) {
     uint8_t ch;
     char *field[20];
     uart_read_blocking(UART_ID, buffer, buffer_len);
-    // while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '$') {
-    //     if (!uart_is_readable(UART_ID))
-    //         printf("uart not readable");
-    //     buffer[i++] = ch;
-    // }
     if (print)  // print the buffer to the console
         console_print(buffer);
-    char *idx = strstr(buffer, "GGA");
-    if (idx) {
-        printf("found GGA!");
-        i = parse_line(idx, field, 20);
-        printf("\n\nUTC Time  :%s\r\n",field[1]);
+    char *gga = strstr(buffer, "GGA");
+    // TODO: stop reading at `$`
+    if (gga) {
+        printf("found GGA!\n");
+        console_print(gga-2);
+        i = parse_line(gga-2, field, 20);  // -2 to include the `talker ID`
+        printf("\n\nMSG type  :%s\r\n",field[0]);
+        printf("UTC Time  :%s\r\n",field[1]);
         printf("Latitude  :%s\r\n",field[2]);
         printf("Longitude :%s\r\n",field[4]);
         printf("Altitude  :%s\r\n",field[9]);
         printf("Satellites:%s\r\n\n",field[7]);
     }
-    // if (strncmp(&buffer[3], "GGA", 3) == 0) {
-    //     i = parse_line(buffer, field, 20);
-    //     //debug_print_fields(i,field);
-    //     printf("\n\nUTC Time  :%s\r\n",field[1]);
-    //     printf("Latitude  :%s\r\n",field[2]);
-    //     printf("Longitude :%s\r\n",field[4]);
-    //     printf("Altitude  :%s\r\n",field[9]);
-    //     printf("Satellites:%s\r\n\n",field[7]);
-    // }
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
@@ -83,7 +72,7 @@ int console_print(char *buffer) {
 void on_uart_rx() {
     size_t len = 255;
     char buffer[len];
-    split_lines(buffer, true, len);
+    split_lines(buffer, false, len);
 }
 
 void setup() {
