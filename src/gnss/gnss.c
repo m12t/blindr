@@ -24,19 +24,29 @@
 #define UART_RX_PIN 5
 
 
-int parse_lines(char *buffer) {
+// function prototypes
+int parse_lines(char *buffer, bool print);
+int console_print(char *buffer);
+void on_uart_rx();
+
+int parse_lines(char *buffer, bool print) {
     int i = 0;
     uint8_t ch;
     while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '$') {
         buffer[i++] = ch;
     }
+    if (print)  // print the buffer to the console
+        console_print(buffer);
+}
+
+int console_print(char *buffer) {
+    printf("%s", buffer);
 }
 
 // RX interrupt handler
 void on_uart_rx() {
     char buffer[255];
-    parse_lines(buffer);
-    printf("%s", buffer);
+    parse_lines(buffer, true);
 }
 
 void setup() {
