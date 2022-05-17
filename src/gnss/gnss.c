@@ -23,19 +23,26 @@
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-static int chars_rxed = 0;
 
 // RX interrupt handler
 void on_uart_rx() {
-    while (uart_is_readable(UART_ID)) {
-        uint8_t ch = uart_getc(UART_ID);
-        // Can we send it back?
-        if (uart_is_writable(UART_ID)) {
-            // Change it slightly first!
-            printf("%c", ch);
-        }
-        chars_rxed++;
+    char buffer[255];
+    int i = 0;
+    uint8_t ch;
+    char id[3];
+    while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '$') {
+        buffer[i++] = ch;
     }
+    // while (uart_is_readable(UART_ID) && (ch = uart_getc(UART_ID)) != '\n') {
+    //     buffer[i++] = ch;
+    // }
+    // while (uart_is_readable(UART_ID)) {
+    //     ch = uart_getc(UART_ID);
+    //     if (ch == '\n')
+    //         printf("found a newline\n");
+    //     printf("%c", ch);
+    // }
+    printf("%s", buffer);
 }
 
 void setup() {
@@ -74,16 +81,12 @@ void setup() {
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(UART_ID, true, false);
 
-    // OK, all set up.
-    // Lets send a basic string out, and then run a loop and wait for RX interrupts
-    // The handler will count them, but also reflect the incoming data back with a slight change!
-    // uart_puts(UART_ID, "\nHello, uart interrupts\n");
+
 }
 
 
 int main() {
     setup();
-
     while (1)
         tight_loop_contents();
 }
