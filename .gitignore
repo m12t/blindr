@@ -155,3 +155,6 @@ gcode/
 
 # prusa slicer files
 *.3mf
+
+# extras dir
+/extras

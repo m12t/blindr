@@ -63,7 +63,7 @@ int parse_line(char *buffer, char **fields, int max_fields) {
 }
 
 int console_print(char *buffer) {
-    printf("%s", buffer);
+    printf("%s\n", buffer);
 }
 
 // RX interrupt handler
