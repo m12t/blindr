@@ -1,26 +1,14 @@
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 
-
-/// \tag::uart_advanced[]
-
 #define UART_ID uart1
 #define BAUD_RATE 9600
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY    UART_PARITY_NONE
-
-// We are using pins 0 and 1, but see the GPIO function select table in the
-// datasheet for information on which other pins can be used.
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
@@ -28,26 +16,30 @@
 // function prototypes
 int split_lines(char *buffer, bool print, size_t buffer_len);
 int parse_line(char *buffer, char **fields, int max_fields);
-int split_identifiers(char *buffer);
+void split_identifiers(char *buffer);
 int console_print(char *buffer);
 void on_uart_rx(void);
 void setup(void);
 
 
-int split_identifiers(char *buffer) {
+void split_identifiers(char *buffer, char **parts) {
+    /*
+    split out the buffer into individual NMEA sentences
+    which are terminated by <cr><lf> aka `\r\n`
+    */
     char *id;
     id = strtok(buffer, "\n\r");
     while (id != NULL) {
         printf( "line:%s\n", id );
         id = strtok(NULL, "\n\r");
     }
-    return 1;
 }
 
 int split_lines(char *buffer, bool print, size_t buffer_len) {
-    int i = 0;
-    uint8_t ch;
-    char *field[20];
+    int i = 0;  // is this used anymore?
+    // uint8_t ch;  // is this used anymore?
+    char *lines[8];  // individual NMEA sentneces within the buffer
+    char *field[20];  // comma-delimited values for each sentence
     uart_read_blocking(UART_ID, buffer, 255);
     split_identifiers(buffer);
     if (print)  // print the buffer to the console
@@ -124,4 +116,3 @@ int main(void) {
         tight_loop_contents();
 }
 
-/// \end:uart_advanced[]
