@@ -28,29 +28,43 @@
 // function prototypes
 int split_lines(char *buffer, bool print, size_t buffer_len);
 int parse_line(char *buffer, char **fields, int max_fields);
+int split_identifiers(char *buffer);
 int console_print(char *buffer);
-void on_uart_rx();
+void on_uart_rx(void);
+void setup(void);
+
+
+int split_identifiers(char *buffer) {
+    char *id;
+    id = strtok(buffer, "\n\r");
+    while (id != NULL) {
+        printf( "line:%s\n", id );
+        id = strtok(NULL, "\n\r");
+    }
+    return 1;
+}
 
 int split_lines(char *buffer, bool print, size_t buffer_len) {
     int i = 0;
     uint8_t ch;
     char *field[20];
-    uart_read_blocking(UART_ID, buffer, buffer_len);
+    uart_read_blocking(UART_ID, buffer, 255);
+    split_identifiers(buffer);
     if (print)  // print the buffer to the console
         console_print(buffer);
-    char *gga = strstr(buffer, "GGA");
-    // TODO: stop reading at `$`
-    if (gga) {
-        printf("found GGA!\n");
-        console_print(gga-2);
-        i = parse_line(gga-2, field, 20);  // -2 to include the `talker ID`
-        printf("\n\nMSG type  :%s\r\n",field[0]);
-        printf("UTC Time  :%s\r\n",field[1]);
-        printf("Latitude  :%s\r\n",field[2]);
-        printf("Longitude :%s\r\n",field[4]);
-        printf("Altitude  :%s\r\n",field[9]);
-        printf("Satellites:%s\r\n\n",field[7]);
-    }
+    // char *gga = strstr(buffer, "GGA");
+    // // TODO: stop reading at "\r\n"
+    // if (gga) {
+    //     printf("found GGA!\n");
+    //     console_print(gga-2);
+    //     i = parse_line(gga-2, field, 20);  // -2 to include the `talker ID`
+    //     printf("\n\nMSG type  :%s\r\n",field[0]);
+    //     printf("UTC Time  :%s\r\n",field[1]);
+    //     printf("Latitude  :%s\r\n",field[2]);
+    //     printf("Longitude :%s\r\n",field[4]);
+    //     printf("Altitude  :%s\r\n",field[9]);
+    //     printf("Satellites:%s\r\n\n",field[7]);
+    // }
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
@@ -58,6 +72,10 @@ int parse_line(char *buffer, char **fields, int max_fields) {
 	fields[i++] = buffer;
 
 	while ((i < max_fields) && NULL != (buffer = strchr(buffer, ','))) {
+        if (buffer[0] == '$') {
+            printf("breaking out\n");
+            break;
+        }
 		*buffer = '\0';  // change the comma to an end of string NULL character
 		fields[i++] = ++buffer;
 	}
@@ -65,17 +83,17 @@ int parse_line(char *buffer, char **fields, int max_fields) {
 }
 
 int console_print(char *buffer) {
-    printf("%s\n", buffer);
+    printf("\n%s\n", buffer);
 }
 
 // RX interrupt handler
-void on_uart_rx() {
-    size_t len = 255;
+void on_uart_rx(void) {
+    size_t len = 256;
     char buffer[len];
-    split_lines(buffer, false, len);
+    split_lines(buffer, true, len);
 }
 
-void setup() {
+void setup(void) {
     printf("\n\n Initializing... \n");
     stdio_init_all();
     uart_init(UART_ID, 9600);
@@ -84,36 +102,23 @@ void setup() {
     // Set datasheet for more information on function select
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-    // Actually, we want a different speed
-    // The call will return the actual baud rate selected, which will be as close as
-    // possible to that requested
-    // int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
-
-    // Set UART flow control CTS/RTS, we don't want these, so turn them off
+    // Set UART flow control CTS/RTS to `false`
     uart_set_hw_flow(UART_ID, false, false);
-
-    // Set our data format
+    // Set data format
     uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
-
-    // Turn off FIFO's - we want to do this character by character
-    uart_set_fifo_enabled(UART_ID, false);
-
+    // Turn on FIFO's - throughput is valued over latency.
+    uart_set_fifo_enabled(UART_ID, true);
     // Set up a RX interrupt
-    // We need to set up the handler first
-    // Select correct interrupt for the UART we are using
-    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
-
+    int UART_IRQ = UART1_IRQ;
     // And set up and enable the interrupt handlers
     irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
     irq_set_enabled(UART_IRQ, true);
-
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(UART_ID, true, false);
 }
 
 
-int main() {
+int main(void) {
     setup();
     while (1)
         tight_loop_contents();
