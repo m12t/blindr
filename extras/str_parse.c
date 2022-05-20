@@ -46,7 +46,7 @@ int parse_comma_delimited_str(char *string, char **fields, int max_fields) {
 
 
 int main() {
-	char buffer[] = "$GNGSA,4554,2322,1111,5555\r\n$GNGPA,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n";  // simulated NMEA data
+	char buffer[] = "$GNGGA,4554,2322,1111,5555\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n";  // simulated NMEA data
 	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence
 	// char **fields[20];  // location of each field of each sentence
 	// char line[] = "$GNSS,4554,2322,1111,5555";
@@ -61,7 +61,21 @@ int main() {
 
 	int i = 0;
 	while (sentences[i] != NULL) {
-		printf("loop: %s\n", sentences[i++]);
+		if (strstr(sentences[i], "GGA")) {
+			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
+			int num_gga_fields = 17;
+			char *ggafields[num_gga_fields];
+			parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
+			// printf("found GGA:\n%s\n", sentences[i]);
+			printf("%s\n", ggafields[0]);
+			printf("%s\n", ggafields[1]);
+			printf("%s\n", ggafields[2]);
+			printf("%s\n", ggafields[3]);
+			printf("%s\n", ggafields[4]);
+		} else {
+			printf("loop: %s\n", sentences[i]);
+		}
+		i++;
 	}
 	
 	// parse_comma_delimited_str(sentences[0], field, 20);
