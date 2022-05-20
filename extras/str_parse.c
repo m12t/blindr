@@ -4,8 +4,7 @@
 int parse_comma_delimited_str(char *string, char **fields, int max_fields);
 void parse_comma_delimited_str_inplace(char **string, int max_fields);
 void parse_buffer(char *buffer, char **sentences);
-int parse_line(char *string, char **fields, int max_fields);
-int get_num_fields(char *string);
+int parse_line(char *string, char **fields, int num_fields);
 
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -25,7 +24,6 @@ void parse_buffer(char *buffer, char **sentences) {
 
 
 void parse_comma_delimited_str_inplace(char **string, int max_fields) {
-	printf("jj");
     printf("%s", *string);
 	int i = 0;
 	char *fields[max_fields];
@@ -43,8 +41,20 @@ void parse_comma_delimited_str_inplace(char **string, int max_fields) {
     // string = fields;  // ??
 }
 
+
+int parse_line(char *string, char **fields, int num_fields) {
+    int i = 0;
+    fields[i++] = string;
+    // search for the numebr of `,` in the sentence to create the appropriate size array?
+    while ((i < num_fields) && NULL != (string = strchr(string, ','))) {
+        *string = '\0';
+        fields[i++] = ++string;
+    }
+	return i-2;  // exclude the last row and move index back 1
+}
+
 int main() {
-	char buffer[] = "$GNGGA,4554,2322,,1111,5555\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
+	char buffer[] = "$GNGGA,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,w,w,w,\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
 	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence
 	// char **fields[8];  // array of pointers to pointers
 	
@@ -59,20 +69,14 @@ int main() {
 	while (sentences[i] != NULL) {
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
-			int num_gga_fields = 17;
-			// char *ggafields[num_gga_fields];
-			// parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
-			printf("h1");
-			parse_comma_delimited_str_inplace(&sentences[i], num_gga_fields);
-			// printf("found GGA:\n%s\n", sentences[i]);
-			// printf("\n%s\n", sentences[i+1]);
-			// printf("\n%s\n", sentences[i+2]);
-			// printf("\n%s\n", sentences[i+3]);
-			// printf("%s\n", ggafields[0]);
-			// printf("%s\n", ggafields[1]);
-			// printf("%s\n", ggafields[2]);
-			// printf("%s\n", ggafields[3]);
-			// printf("%s\n", ggafields[4]);
+			int num_gga_fields = 18;  // 1 more
+			char *gga_fields[num_gga_fields];
+			int gga_populated;
+			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
+			printf("found GGA:\n%s\n", sentences[i]);  // DAT
+			for (int j = 0; j <= gga_populated; j++) {
+				printf("%d: %s\n", j, gga_fields[j]);
+			}
 		}
 		// } else if (strstr(sentences[i], "VTG")) {
 		// 	printf("loop: %s\n", sentences[i]);
