@@ -16,10 +16,12 @@
 // function prototypes
 void parse_buffer(char *buffer, char **sentences);
 int parse_line(char *string, char **fields, int num_fields);
+bool checksum_valid(char *string);
 void on_uart_rx(void);
-int console_print(char *buffer);
 void setup(void);
 int main(void);
+int hex2int(char *c);
+int hexchar2int(char c);
 
 void parse_buffer(char *buffer, char **sentences) {
     /*
@@ -45,12 +47,62 @@ int parse_line(char *string, char **fields, int num_fields) {
         *string = '\0';
         fields[i++] = ++string;
     }
-	return i-2;  // exclude the last row and move index back 1
+	return --i;  // move index back 1 to return the num_populated fields
+}
+
+int hexchar2int(char c) {
+    // from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    return -1;
+}
+
+int hex2int(char *c) {
+    // from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
+	int value;
+
+	value = hexchar2int(c[0]);
+	value = value << 4;
+	value += hexchar2int(c[1]);
+
+	return value;
+}
+
+
+bool checksum_valid(char *string) {
+    // from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
+    char *checksum_str;
+	int checksum;
+	unsigned char calculated_checksum = 0;
+
+	// Checksum is postcede by *
+	checksum_str = strchr(string, '*');
+	if (checksum_str != NULL){
+		// Remove checksum from string
+		*checksum_str = '\0';
+		// Calculate checksum, starting after $ (i = 1)
+		for (int i = 1; i < strlen(string); i++) {
+			calculated_checksum = calculated_checksum ^ string[i];
+		}
+		checksum = hex2int((char *)checksum_str+1);
+		//printf("Checksum Str [%s], Checksum %02X, Calculated Checksum %02X\r\n",(char *)checksum_str+1, checksum, calculated_checksum);
+		if (checksum == calculated_checksum) {
+			printf("Checksum OK");
+			return 1;
+		}
+	} else {
+		printf("Error: Checksum missing or NULL NMEA message\r\n");
+		return 0;
+	}
+	return 0;
 }
 
 // RX interrupt handler
 void on_uart_rx(void) {
-    // todo: only read valid lines when splitting them up to sentences or values.
     size_t len = 256;  // size of the buffer in bytes
     char buffer[len];  // make a buffer of size `len` for the raw message
     char *sentences[8];  // array of pointers pointing to the location of the start of each sentence within buffer
@@ -66,24 +118,23 @@ void on_uart_rx(void) {
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			num_fields = 18;  // 1 more
-            valid = true;  // run the below
-			printf("found GGA:\n%s\n", sentences[i]);  // DAT
+            valid = true;  // run the below. temporarily false for testing VTG
 		} else if (strstr(sentences[i], "ZDA")) {
 			num_fields = 10;  // 1 more
-            valid = true;  // run the below
-			printf("found ZDA:\n%s\n", sentences[i]);  // DAT
+            valid = true;  // run the below. temporarily false for testing VTG
 		} else if (strstr(sentences[i], "VTG")) {
 			num_fields = 13;  // 1 more
             valid = true;  // run the below
-			printf("found VTG:\n%s\n", sentences[i]);  // DAT
 		} else {
         }
-        if (valid) {
+
+        if (valid && checksum_valid(sentences[i])) {
             char *fields[num_fields];
             num_populated = parse_line(sentences[i], fields, num_fields);
-            for (int j = 0; j < num_populated; j++) {
-                printf("%d: %s\n", j, fields[j]);
-            }
+            printf("\e[1;1H\e[2J");  // clear screen
+            // for (int j = 0; j <= num_populated; j++) {
+            //     printf("%d: %s\n", j, fields[j]);
+            // }
         }
 		// } else if (strstr(sentences[i], "VTG")) {
 		// 	printf("loop: %s\n", sentences[i]);
@@ -91,11 +142,6 @@ void on_uart_rx(void) {
 		i++;
 	}
 
-}
-
-
-int console_print(char *buffer) {
-    printf("\n%s\n", buffer);
 }
 
 void setup(void) {
