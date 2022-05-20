@@ -23,19 +23,6 @@ void parse_buffer(char *buffer, char **sentences) {
 	sentences[i-1] = NULL;  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
 }
 
-int get_num_fields(char *string) {
-    // search for the numebr of `,` in the sentence to create the appropriate size array
-	int count = 0;
-	int len;
-	len = strlen(string);
-	for (int i = 0; i < len; i++) {
-		if (string[i] == ",") {
-			count++;
-		}
-	}
-	return ++count;  // field count is one greater than the number of commas
-}
-
 
 void parse_comma_delimited_str_inplace(char **string, int max_fields) {
 	printf("jj");
