@@ -57,28 +57,34 @@ void on_uart_rx(void) {
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
     parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
 
-    int i = 0; 
+    int i = 0;
 	while (sentences[i] != NULL) {
+        int num_fields = 0;
+        int num_populated = 0;  // reset each iteration
+        bool valid = false;
+        // printf("(%.*s)\n", 7, sentences[i]);  // for debugging the sentence IDs found
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
-			int num_gga_fields = 18;  // 1 more
-			char *gga_fields[num_gga_fields];
-			int gga_populated;
-			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
+			num_fields = 18;  // 1 more
+            valid = true;  // run the below
 			printf("found GGA:\n%s\n", sentences[i]);  // DAT
-			for (int j = 0; j <= gga_populated; j++) {
-				printf("%d: %s\n", j, gga_fields[j]);
-			}
 		} else if (strstr(sentences[i], "ZDA")) {
-			int num_zda_fields = 10;  // 1 more
-			char *zda_fields[num_zda_fields];
-			int zda_populated;
-			zda_populated = parse_line(sentences[i], zda_fields, num_zda_fields);
+			num_fields = 10;  // 1 more
+            valid = true;  // run the below
 			printf("found ZDA:\n%s\n", sentences[i]);  // DAT
-			for (int j = 0; j <= zda_populated; j++) {
-				printf("%d: %s\n", j, zda_fields[j]);
-			}
-		}
+		} else if (strstr(sentences[i], "VTG")) {
+			num_fields = 13;  // 1 more
+            valid = true;  // run the below
+			printf("found VTG:\n%s\n", sentences[i]);  // DAT
+		} else {
+        }
+        if (valid) {
+            char *fields[num_fields];
+            num_populated = parse_line(sentences[i], fields, num_fields);
+            for (int j = 0; j < num_populated; j++) {
+                printf("%d: %s\n", j, fields[j]);
+            }
+        }
 		// } else if (strstr(sentences[i], "VTG")) {
 		// 	printf("loop: %s\n", sentences[i]);
 		// }
