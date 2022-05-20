@@ -14,34 +14,32 @@
 
 
 // function prototypes
-int split_lines(char *buffer, bool print, size_t buffer_len);
+int split_lines(char *buffer, bool print, size_t buffer_len);  // TODO: needs changes...
 int parse_line(char *buffer, char **fields, int max_fields);
-void split_identifiers(char *buffer);
+void split_sentences(char *buffer);
 int console_print(char *buffer);
 void on_uart_rx(void);
 void setup(void);
 
 
-void split_identifiers(char *buffer, char **parts) {
+
+void split_sentences(char *buffer) {
     /*
     split out the buffer into individual NMEA sentences
     which are terminated by <cr><lf> aka `\r\n`
     */
-    char *id;
-    id = strtok(buffer, "\n\r");
-    while (id != NULL) {
-        printf( "line:%s\n", id );
-        id = strtok(NULL, "\n\r");
+    char *eol;
+    eol = strtok(buffer, "\n\r");
+    while (eol != NULL) {
+        printf( "line:%s\n", eol );  // DAT
+        eol = strtok(NULL, "\n\r");
     }
 }
 
 int split_lines(char *buffer, bool print, size_t buffer_len) {
-    int i = 0;  // is this used anymore?
-    // uint8_t ch;  // is this used anymore?
     char *lines[8];  // individual NMEA sentneces within the buffer
     char *field[20];  // comma-delimited values for each sentence
-    uart_read_blocking(UART_ID, buffer, 255);
-    split_identifiers(buffer);
+    split_sentences(buffer);
     if (print)  // print the buffer to the console
         console_print(buffer);
     // char *gga = strstr(buffer, "GGA");
@@ -60,6 +58,7 @@ int split_lines(char *buffer, bool print, size_t buffer_len) {
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
+    // for splitting sentences into parts
     int i = 0;
 	fields[i++] = buffer;
 
@@ -80,9 +79,13 @@ int console_print(char *buffer) {
 
 // RX interrupt handler
 void on_uart_rx(void) {
-    size_t len = 256;
-    char buffer[len];
-    split_lines(buffer, true, len);
+    // todo: only read valid lines when splitting them up to sentences or values.
+    size_t len = 256;  // size of the buffer in bytes
+    char buffer[len];  // make a buffer of size `len` for the raw message
+    char *sentences[8];  // buffer for holding pointers to each sentence
+    uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
+    split_message(buffer, sentences, len);  // split the message into individual sentences
+    split_sentences();  // split the sentences into values
 }
 
 void setup(void) {
