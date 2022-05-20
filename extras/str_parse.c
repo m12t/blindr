@@ -54,16 +54,10 @@ int parse_line(char *string, char **fields, int num_fields) {
 }
 
 int main() {
-	char buffer[] = "$GNGGA,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,w,w,w,\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
-	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence
-	// char **fields[8];  // array of pointers to pointers
-	
+	char buffer[] = "$GNGGA,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,w,w,w,\r\n$GNZDA,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
+	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence	
 	parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
-
-	// printf("1: %s\n\n", sentences[0]);
-	// printf("2: %s\n\n", sentences[1]);
-	// printf("3: %s\n\n", sentences[2]);
-	// printf("4: %s\n\n", sentences[3]);
+	char **components[8];  // array of arrays of parsed sentences
 
 	int i = 0;
 	while (sentences[i] != NULL) {
@@ -74,10 +68,27 @@ int main() {
 			int gga_populated;
 			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
 			printf("found GGA:\n%s\n", sentences[i]);  // DAT
+			components[i] = gga_fields;
 			for (int j = 0; j <= gga_populated; j++) {
 				printf("%d: %s\n", j, gga_fields[j]);
 			}
+		} else if (strstr(sentences[i], "ZDA")) {
+			int num_zda_fields = 10;  // 1 more
+			char *zda_fields[num_zda_fields];
+			int zda_populated;
+			zda_populated = parse_line(sentences[i], zda_fields, num_zda_fields);
+			printf("found ZDA:\n%s\n", sentences[i]);  // DAT
+			components[i] = zda_fields;
+			for (int j = 0; j <= zda_populated; j++) {
+				printf("%d: %s\n", j, zda_fields[j]);
+			}
 		}
+		printf("compy:\n%s\n", components[i][0]);
+		printf("compy:\n%s\n", components[i][1]);
+		printf("compy:\n%s\n", components[i][2]);
+		printf("compy:\n%s\n", components[i][3]);
+		printf("compy:\n%s\n", components[i][4]);
+		printf("compy:\n%s\n", components[i][5]);
 		// } else if (strstr(sentences[i], "VTG")) {
 		// 	printf("loop: %s\n", sentences[i]);
 		// }
