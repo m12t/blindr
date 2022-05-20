@@ -128,9 +128,6 @@ void on_uart_rx(void) {
                 printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
             }
         }
-		// } else if (strstr(sentences[i], "VTG")) {
-		// 	printf("loop: %s\n", sentences[i]);
-		// }
 		i++;
 	}
 
