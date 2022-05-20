@@ -1,3 +1,4 @@
+#include "gnss.h"
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
@@ -8,20 +9,11 @@
 #define BAUD_RATE 9600
 #define DATA_BITS 8
 #define STOP_BITS 1
-#define PARITY    UART_PARITY_NONE
+#define PARITY UART_PARITY_NONE
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
-
-
-// function prototypes
-void parse_buffer(char *buffer, char **sentences);
-int parse_line(char *string, char **fields, int num_fields);
-bool checksum_valid(char *string);
-void on_uart_rx(void);
-void setup(void);
-int main(void);
-int hex2int(char *c);
-int hexchar2int(char c);
+#define true 1
+#define false 0
 
 void parse_buffer(char *buffer, char **sentences) {
     /*
@@ -73,7 +65,7 @@ int hex2int(char *c) {
 }
 
 
-bool checksum_valid(char *string) {
+int checksum_valid(char *string) {
     // from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
     char *checksum_str;
 	int checksum;
@@ -91,11 +83,11 @@ bool checksum_valid(char *string) {
 		checksum = hex2int((char *)checksum_str+1);
 		//printf("Checksum Str [%s], Checksum %02X, Calculated Checksum %02X\r\n",(char *)checksum_str+1, checksum, calculated_checksum);
 		if (checksum == calculated_checksum) {
-			printf("Checksum OK");
+			// printf("Checksum OK");
 			return 1;
 		}
 	} else {
-		printf("Error: Checksum missing or NULL NMEA message\r\n");
+		// printf("Error: Checksum missing or NULL NMEA message\r\n");
 		return 0;
 	}
 	return 0;
@@ -113,7 +105,7 @@ void on_uart_rx(void) {
 	while (sentences[i] != NULL) {
         int num_fields = 0;
         int num_populated = 0;  // reset each iteration
-        bool valid = false;
+        int valid = false;
         // printf("(%.*s)\n", 7, sentences[i]);  // for debugging the sentence IDs found
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
@@ -132,9 +124,9 @@ void on_uart_rx(void) {
             char *fields[num_fields];
             num_populated = parse_line(sentences[i], fields, num_fields);
             printf("\e[1;1H\e[2J");  // clear screen
-            // for (int j = 0; j <= num_populated; j++) {
-            //     printf("%d: %s\n", j, fields[j]);
-            // }
+            for (int j = 0; j <= num_populated; j++) {
+                printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
+            }
         }
 		// } else if (strstr(sentences[i], "VTG")) {
 		// 	printf("loop: %s\n", sentences[i]);
@@ -174,4 +166,3 @@ int main(void) {
     while (1)
         tight_loop_contents();
 }
-
