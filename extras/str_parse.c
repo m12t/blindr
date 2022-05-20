@@ -4,6 +4,7 @@
 int parse_comma_delimited_str(char *string, char **fields, int max_fields);
 void parse_buffer(char *buffer, char **sentences);
 int parse_line(char *string, char **fields, int max_fields);
+int get_num_fields(char *string);
 
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -22,11 +23,24 @@ void parse_buffer(char *buffer, char **sentences) {
 	sentences[i-1] = NULL;  // remove the last entered row as it can't be guaranteed to be complete
 }
 
-int parse_line(char *string, char **fields, int max_fields) {
+int get_num_fields(char *string) {
+    // search for the numebr of `,` in the sentence to create the appropriate size array
+	int count = 0;
+	int len;
+	len = strlen(string);
+	for (int i = 0; i < len; i++) {
+		if (string[i] == ",") {
+			count++;
+		}
+	}
+	return ++count;  // field count is one greater than the number of commas
+}
+
+
+int parse_line(char *string, char **fields, int num_fields) {
     int i = 0;
     fields[i++] = string;
-    // search for the numebr of `,` in the sentence to create the appropriate size array?
-    while ((i < max_fields) && NULL != (string = strchr(string, ','))) {
+    while ((i < num_fields) && NULL != (string = strchr(string, ','))) {
         *string = '\0';
         fields[i++] = ++string;
     }
@@ -52,7 +66,10 @@ int main() {
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			int num_gga_fields = 17;
-			char *gga_fields[num_gga_fields];
+			int actual_num_fields;
+			actual_num_fields = get_num_fields(string);
+			num_fields = actual_num_fields < max_fields ? actual_num_fields : max_fields;  // min of the two
+			char *gga_fields[num_fields];
 			// parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
 			int gga_populated;
 			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
