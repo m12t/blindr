@@ -2,8 +2,8 @@
 #include <stdio.h>
 
 int parse_comma_delimited_str(char *string, char **fields, int max_fields);
-void parse_comma_delimited_str_inplace(char *string, int max_fields);
 void parse_buffer(char *buffer, char **sentences);
+int parse_line(char *string, char **fields, int max_fields);
 
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -22,52 +22,26 @@ void parse_buffer(char *buffer, char **sentences) {
 	sentences[i-1] = NULL;  // remove the last entered row as it can't be guaranteed to be complete
 }
 
-int parse_line(char *buffer, char **fields, int max_fields) {
+int parse_line(char *string, char **fields, int max_fields) {
     int i = 0;
-	fields[i++] = buffer;
-
-	while ((i < max_fields) && NULL != (buffer = strchr(buffer, ','))) {
-        if (buffer[0] == '$') {  // is this needed now that lines are split by `\r\n` ???
-            printf("breaking out\n");
-            break;
-        }
-		*buffer = '\0';  // change the comma to an end of string NULL character
-		fields[i++] = ++buffer;
-	}
-	return --i;
-}
-
-int parse_comma_delimited_str(char *string, char **fields, int max_fields) {
-   int i = 0;
-   fields[i++] = string;
-   while ((i < max_fields) && NULL != (string = strchr(string, ','))) {
-      *string = '\0';
-      fields[i++] = ++string;
-   }
-   return --i;
-}
-
-void parse_comma_delimited_str_inplace(char *string, int max_fields) {
-   int i = 0;
-   char *fields[max_fields];
-   fields[i++] = string;
-   while ((i < max_fields) && NULL != (string = strchr(string, ','))) {
-      *string = '\0';
-      fields[i++] = ++string;
-   }
-   printf("ip1: %s\n", fields[0]);
-//    string = fields;  // ??
+    fields[i++] = string;
+    // search for the numebr of `,` in the sentence to create the appropriate size array?
+    while ((i < max_fields) && NULL != (string = strchr(string, ','))) {
+        *string = '\0';
+        fields[i++] = ++string;
+    }
+    printf("ip1: %s\n", fields[0]);  // DAT
+    printf("ip2: %s\n", fields[1]);  // DAT
+    return --i;
 }
 
 int main() {
 	char buffer[] = "$GNGGA,4554,2322,1111,5555\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
-	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence
-	// char **fields[20];  // location of each field of each sentence
-	// char line[] = "$GNSS,4554,2322,1111,5555";
-	char *field[20];
+	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence within buffer
 	
 	parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
 
+	// debug: print the sentences
 	printf("1: %s\n\n", sentences[0]);
 	printf("2: %s\n\n", sentences[1]);
 	printf("3: %s\n\n", sentences[2]);
@@ -78,18 +52,14 @@ int main() {
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			int num_gga_fields = 17;
-			char *ggafields[num_gga_fields];
+			char *gga_fields[num_gga_fields];
 			// parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
-			parse_comma_delimited_str_inplace(sentences[i], num_gga_fields);
-			printf("found GGA:\n%s\n", sentences[i]);
-			printf("\n%s\n", sentences[i+1]);
-			printf("\n%s\n", sentences[i+2]);
-			printf("\n%s\n", sentences[i+3]);
-			// printf("%s\n", ggafields[0]);
-			// printf("%s\n", ggafields[1]);
-			// printf("%s\n", ggafields[2]);
-			// printf("%s\n", ggafields[3]);
-			// printf("%s\n", ggafields[4]);
+			int gga_populated;
+			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
+			printf("found GGA:\n%s\n", sentences[i]);  // DAT
+			for (int j = 0; j <= gga_populated; j++) {
+				printf("%d: %s\n", j, gga_fields[j]);
+			}
 		} else if (strstr(sentences[i], "VTG")) {
 			printf("loop: %s\n", sentences[i]);
 		}
@@ -103,5 +73,3 @@ int main() {
 	// printf("%s\n", field[3]);
 	// printf("%s\n", field[4]);
 }
-
-	
