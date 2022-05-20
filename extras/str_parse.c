@@ -1,8 +1,6 @@
 #include <string.h>
 #include <stdio.h>
 
-int parse_comma_delimited_str(char *string, char **fields, int max_fields);
-void parse_comma_delimited_str_inplace(char **string, int max_fields);
 void parse_buffer(char *buffer, char **sentences);
 int parse_line(char *string, char **fields, int num_fields);
 
@@ -23,25 +21,6 @@ void parse_buffer(char *buffer, char **sentences) {
 }
 
 
-void parse_comma_delimited_str_inplace(char **string, int max_fields) {
-    printf("%s", *string);
-	int i = 0;
-	char *fields[max_fields];
-	fields[i] = string[0];
-	while ((i < max_fields-1) && NULL != (*string = strchr(*string, ','))) {
-    	**string = '\0';
-    	fields[++i] = ++*string;
-    }
-    printf("\nip1: %s\n", fields[0]);
-    printf("ip2: %s\n", fields[1]);
-    printf("ip3: %s\n", fields[2]);
-    printf("ip4: %s\n", fields[3]);
-    printf("ip5: %s\n", fields[4]);
-    printf("ip6: %s\n", fields[5]);
-    // string = fields;  // ??
-}
-
-
 int parse_line(char *string, char **fields, int num_fields) {
     int i = 0;
     fields[i++] = string;
@@ -53,12 +32,19 @@ int parse_line(char *string, char **fields, int num_fields) {
 	return i-2;  // exclude the last row and move index back 1
 }
 
+void extract_gga(char *sentence, float *longitude, float *latitude, char *time) {
+	*latitude = sentence[2];
+	*longitude = sentence[4];
+	// GPStime = parts[1][0:2] + ":" + parts[1][2:4] + ":" + parts[1][4:6];
+}
+
 int main() {
 	char buffer[] = "$GNGGA,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,w,w,w,\r\n$GNZDA,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
 	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence	
 	parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
-	float longitude;  // can extract these anywhere by passing pointers
-	float latitude;   // can extract these anywhere by passing pointers
+	float *longitude;  // can extract these anywhere by passing pointers
+	float *latitude;   // can extract these anywhere by passing pointers
+	char *time;
 
 	int i = 0;
 	while (sentences[i] != NULL) {
@@ -69,6 +55,8 @@ int main() {
 			int gga_populated;
 			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
 			printf("found GGA:\n%s\n", sentences[i]);  // DAT
+			extract_gga(sentences[i], longitude, latitude, time);
+			printf("%f", *longitude);
 			for (int j = 0; j <= gga_populated; j++) {
 				printf("%d: %s\n", j, gga_fields[j]);
 			}
