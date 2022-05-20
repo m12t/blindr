@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 int parse_comma_delimited_str(char *string, char **fields, int max_fields);
+void parse_comma_delimited_str_inplace(char *string, int max_fields);
 void parse_buffer(char *buffer, char **sentences);
 
 
@@ -13,10 +14,12 @@ void parse_buffer(char *buffer, char **sentences) {
     int i = 0;
     char *eol;  // end of line
     eol = strtok(buffer, "\n\r");
+	printf("%s", eol);
     while (eol != NULL) {
 		sentences[i++] = eol;
-        eol = strtok(NULL, "\n\r");
+        eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
     }
+	sentences[i-1] = NULL;  // remove the last entered row as it can't be guaranteed to be complete
 }
 
 int parse_line(char *buffer, char **fields, int max_fields) {
@@ -44,9 +47,20 @@ int parse_comma_delimited_str(char *string, char **fields, int max_fields) {
    return --i;
 }
 
+void parse_comma_delimited_str_inplace(char *string, int max_fields) {
+   int i = 0;
+   char *fields[max_fields];
+   fields[i++] = string;
+   while ((i < max_fields) && NULL != (string = strchr(string, ','))) {
+      *string = '\0';
+      fields[i++] = ++string;
+   }
+   printf("ip1: %s\n", fields[0]);
+//    string = fields;  // ??
+}
 
 int main() {
-	char buffer[] = "$GNGGA,4554,2322,1111,5555\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n";  // simulated NMEA data
+	char buffer[] = "$GNGGA,4554,2322,1111,5555\r\n$GNVTG,aa,bb,cc,dd,ee,ff\r\n$GARMC,q1,q2,q3,q4,q5,q6\r\n$BAD, 44";  // simulated NMEA data
 	char *sentences[8];  // array of pointers pointing to the location of the start of each sentence
 	// char **fields[20];  // location of each field of each sentence
 	// char line[] = "$GNSS,4554,2322,1111,5555";
@@ -54,10 +68,10 @@ int main() {
 	
 	parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
 
-	// printf("1: %s\n\n", sentences[0]);
-	// printf("2: %s\n\n", sentences[1]);
-	// printf("3: %s\n\n", sentences[2]);
-	// printf("4: %s\n\n", sentences[3]);
+	printf("1: %s\n\n", sentences[0]);
+	printf("2: %s\n\n", sentences[1]);
+	printf("3: %s\n\n", sentences[2]);
+	printf("4: %s\n\n", sentences[3]);
 
 	int i = 0;
 	while (sentences[i] != NULL) {
@@ -65,14 +79,18 @@ int main() {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			int num_gga_fields = 17;
 			char *ggafields[num_gga_fields];
-			parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
-			// printf("found GGA:\n%s\n", sentences[i]);
-			printf("%s\n", ggafields[0]);
-			printf("%s\n", ggafields[1]);
-			printf("%s\n", ggafields[2]);
-			printf("%s\n", ggafields[3]);
-			printf("%s\n", ggafields[4]);
-		} else {
+			// parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
+			parse_comma_delimited_str_inplace(sentences[i], num_gga_fields);
+			printf("found GGA:\n%s\n", sentences[i]);
+			printf("\n%s\n", sentences[i+1]);
+			printf("\n%s\n", sentences[i+2]);
+			printf("\n%s\n", sentences[i+3]);
+			// printf("%s\n", ggafields[0]);
+			// printf("%s\n", ggafields[1]);
+			// printf("%s\n", ggafields[2]);
+			// printf("%s\n", ggafields[3]);
+			// printf("%s\n", ggafields[4]);
+		} else if (strstr(sentences[i], "VTG")) {
 			printf("loop: %s\n", sentences[i]);
 		}
 		i++;
