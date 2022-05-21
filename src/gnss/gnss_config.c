@@ -33,7 +33,7 @@ https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_Rec
 
 
 void on_uart_rx() {
-    size_t len = 255;  // size of the buffer in bytes
+    size_t len = 1024;  // size of the buffer in bytes
     char buffer[len];  // make a buffer of size `len` for the raw message
 
     uart_read_blocking(UART_ID, buffer, len);
@@ -73,8 +73,8 @@ int main(void) {
     uart_init(UART_ID, 9600);
     printf("initialized uart on 9600\n");
     // char nmea_msg[] = "$PUBX,41,1,0007,0003,115200,0*24\r\n";  // update baud rate
-    // char nmea_msg[] = "$PUBX,40,ZDA,1,1,1,0*45\r\n";  // enable ZDA
-    char nmea_msg[] = "$PUBX,40,GLL,0,0,0,0*5C\r\n";  // disable GLL messages
+    char nmea_msg[] = "$PUBX,40,ZDA,1,1,1,0*45\r\n";  // enable ZDA
+    // char nmea_msg[] = "$PUBX,40,GLL,0,0,0,0*5C\r\n";  // disable GLL messages
     // calc_checksum(nmea_msg);
 
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
