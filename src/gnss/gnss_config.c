@@ -14,8 +14,9 @@
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
 
-int calc_checksum(char *string);
+int add_checksum(char *string);
 void on_uart_rx(void);
+char* char2hex(unsigned char calculated_checksum);
 
 /* ublox m8 datasheet:
 https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
@@ -40,7 +41,26 @@ void on_uart_rx() {
     printf("received:\n%s\n-------------\n", buffer);
 }
 
-int calc_checksum(char *string) {
+char* char2hex(unsigned char calculated_checksum) {
+    long quotient, remainder;
+    int i, j = 0;
+    char hexadecimalnum[100]; 
+    quotient = calculated_checksum;
+ 
+    while (quotient != 0)
+    {
+        remainder = quotient % 16;
+        if (remainder < 10)
+            hexadecimalnum[j++] = 48 + remainder;
+        else
+            hexadecimalnum[j++] = 55 + remainder;
+        quotient = quotient / 16;
+    }
+    printf("%s", hexadecimalnum);
+    return hexadecimalnum;
+}
+
+int add_checksum(char *string) {
     // adapted from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
     char *checksum_str;
 	int checksum;
@@ -57,7 +77,12 @@ int calc_checksum(char *string) {
 		for (int i = 1; i < strlen(string); i++) {
 			calculated_checksum = calculated_checksum ^ string[i];
 		}
-        printf("Calculated checksum: %u", calculated_checksum);
+        printf("Calculated checksum: %u\n", calculated_checksum);
+        char cs[] = char2hex(calculated_checksum);
+        printf("hex check: %s\n", cs);
+        string[strlen(string) - 4] = cs[0];
+        string[strlen(string) - 3] = cs[1];
+        printf("full msg: %s\n", string);
         return calculated_checksum;
 	} else {
 		// printf("Error: Checksum missing or NULL NMEA message\r\n");
@@ -72,11 +97,13 @@ int main(void) {
     printf("initialized stdio\n");
     uart_init(UART_ID, 9600);
     printf("initialized uart on 9600\n");
+    // char nmea_msg[] = "$PUBX,41,1,3,3,115200,0*1C\r\n";
     // char nmea_msg[] = "$PUBX,41,1,0007,0003,115200,0*24\r\n";  // update baud rate
-    char nmea_msg[] = "$PUBX,40,ZDA,1,1,1,0*45\r\n";  // enable ZDA
-    // char nmea_msg[] = "$PUBX,40,GLL,0,0,0,0*5C\r\n";  // disable GLL messages
-    // calc_checksum(nmea_msg);
-
+    // char nmea_msg[] = "$PUBX,40,ZDA,1,1,1,0*45\r\n";  // enable ZDA
+    char nmea_msg[] = "$PUBX,40,GLL,0,1,0,0*5D\r\n";  // disable GLL messages  // TODO: test selectively enabling USART GLL...
+    add_checksum(nmea_msg);
+    printf("%s", nmea_msg);
+    /*
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
     uart_set_hw_flow(UART_ID, false, false);
@@ -87,9 +114,9 @@ int main(void) {
 
     // send these prior to interrupts
     printf("----\n");
-    for (int i=0; i<strlen(nmea_msg); i++) {
-        uart_putc_raw(UART_ID, nmea_msg[i]);
-    }
+    // for (int i=0; i<strlen(nmea_msg); i++) {
+    //     uart_putc_raw(UART_ID, nmea_msg[i]);
+    // }
     printf("----\n");
 
     // Set up a RX interrupt
@@ -106,8 +133,10 @@ int main(void) {
     // char msg[] = "0xB5,0x62,0x0A,0x04,0x00,0x00,0x0E,0x34,\0";
     // uint8_t msg[] = { 0xB5,0x62,0x0A,0x04,0x00,0x00,0x0E,0x34,00 };
 
-
+    sleep_ms(2000);
     // int __unused actual = uart_set_baudrate(UART_ID, 115200);
     while (1)
         tight_loop_contents();
+
+    // */
 }
