@@ -80,6 +80,7 @@ int checksum_valid(char *string) {
 		for (int i = 1; i < strlen(string); i++) {
 			calculated_checksum = calculated_checksum ^ string[i];
 		}
+        printf("Calculated checksum: %c", calculated_checksum);
 		checksum = hex2int((char *)checksum_str+1);
 		//printf("Checksum Str [%s], Checksum %02X, Calculated Checksum %02X\r\n",(char *)checksum_str+1, checksum, calculated_checksum);
 		if (checksum == calculated_checksum) {
@@ -95,11 +96,14 @@ int checksum_valid(char *string) {
 
 // RX interrupt handler
 void on_uart_rx(void) {
-    size_t len = 256;  // size of the buffer in bytes
+    size_t len = 255;  // size of the buffer in bytes
     char buffer[len];  // make a buffer of size `len` for the raw message
     char *sentences[8];  // array of pointers pointing to the location of the start of each sentence within buffer
+
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
     parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
+
+    // todo: check for signal lock before using any data, especially time.
 
     int i = 0;
 	while (sentences[i] != NULL) {
@@ -114,11 +118,15 @@ void on_uart_rx(void) {
 		} else if (strstr(sentences[i], "ZDA")) {
 			num_fields = 10;  // 1 more
             valid = true;  // run the below. temporarily false for testing VTG
+            printf("found ZDA: %s\n", sentences[i]);
 		} else if (strstr(sentences[i], "VTG")) {
 			num_fields = 13;  // 1 more
             valid = true;  // run the below
 		} else {
+            num_fields = 24;
+            valid = false;  // risky... ok for debugging.
         }
+        // todo: read the raw data and look for ZDA sentences and check the FIFO UART/read the raw chars one by one
 
         if (valid && checksum_valid(sentences[i])) {
             char *fields[num_fields];
@@ -130,11 +138,9 @@ void on_uart_rx(void) {
         }
 		i++;
 	}
-
 }
 
 void setup(void) {
-    printf("\n\n Initializing... \n");
     stdio_init_all();
     uart_init(UART_ID, 9600);
 
