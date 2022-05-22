@@ -5,12 +5,19 @@
 
 // setup the RTC on pico
 
+
+int set_onboard_rtc() {
+    // receive ZDA data (parsed or not?) and populate set the RTC to the current time.
+
+}
+
+
 int main(void) {
     stdio_init_all();
     printf("init`ng RTC\n");
 
-    char datetime_buffer[256];
-    char *datetime_str = &datetime_buffer[0];  // address of first element in buffer
+    // char datetime_buffer[256];
+    // char *datetime_str = &datetime_buffer[0];  // address of first element in buffer
 
     datetime_t dt = {
         .year = 2022,
@@ -27,8 +34,8 @@ int main(void) {
 
     while (1) {
         rtc_get_datetime(&dt);
-        datetime_to_str(datetime_str, sizeof(datetime_buffer), &dt);
-        printf("\r%s\t", datetime_str);
+        // datetime_to_str(datetime_str, sizeof(datetime_buffer), &dt);
+        printf("\rsec: %d\t", dt.sec);
         sleep_ms(100);
     }
     return 0;
