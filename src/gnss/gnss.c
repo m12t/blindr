@@ -80,9 +80,8 @@ int checksum_valid(char *string) {
 		for (int i = 1; i < strlen(string); i++) {
 			calculated_checksum = calculated_checksum ^ string[i];
 		}
-        printf("Calculated checksum: %c", calculated_checksum);
+        // printf("Calculated checksum: %c", calculated_checksum);
 		checksum = hex2int((char *)checksum_str+1);
-		//printf("Checksum Str [%s], Checksum %02X, Calculated Checksum %02X\r\n",(char *)checksum_str+1, checksum, calculated_checksum);
 		if (checksum == calculated_checksum) {
 			// printf("Checksum OK");
 			return 1;
@@ -110,7 +109,7 @@ void on_uart_rx(void) {
         int num_fields = 0;
         int num_populated = 0;  // reset each iteration
         int valid = false;
-        printf("(%.*s)\n", 7, sentences[i]);  // for debugging the sentence IDs found
+        // printf("(%.*s)\n", 7, sentences[i]);  // for debugging the sentence IDs found
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			num_fields = 18;  // 1 more
@@ -118,26 +117,19 @@ void on_uart_rx(void) {
 		} else if (strstr(sentences[i], "ZDA")) {
 			num_fields = 10;  // 1 more
             valid = true;  // run the below. temporarily false for testing VTG
-            printf("found ZDA: %s\n", sentences[i]);
-		} else if (strstr(sentences[i], "VTG")) {
-			num_fields = 13;  // 1 more
-            valid = true;  // run the below
-		} else if (strstr(sentences[i], "GLL")) {
-            num_fields = 11;
-            valid = true;
-        } else {
+		} else {
             num_fields = 24;
-            valid = false;  // risky... ok for debugging.
+            valid = true;  // risky... ok for debugging.
         }
         // todo: read the raw data and look for ZDA sentences and check the FIFO UART/read the raw chars one by one
 
         if (valid && checksum_valid(sentences[i])) {
             char *fields[num_fields];
             num_populated = parse_line(sentences[i], fields, num_fields);
-            // printf("\e[1;1H\e[2J");  // clear screen
-            // for (int j = 0; j <= num_populated; j++) {
-            //     printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
-            // }
+            printf("\e[1;1H\e[2J");  // clear screen
+            for (int j = 0; j <= num_populated; j++) {
+                printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
+            }
         }
 		i++;
 	}
@@ -145,7 +137,7 @@ void on_uart_rx(void) {
 
 void setup(void) {
     stdio_init_all();
-    uart_init(UART_ID, 9600);
+    uart_init(UART_ID, 115200);
 
     // Set the TX and RX pins by using the function select on the GPIO
     // Set datasheet for more information on function select
