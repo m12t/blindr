@@ -6,7 +6,7 @@
 #include "hardware/irq.h"
 
 #define UART_ID uart1
-#define BAUD_RATE 9600
+#define BAUD_RATE 115200
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY UART_PARITY_NONE
@@ -137,10 +137,10 @@ void on_uart_rx(void) {
 
 void setup(void) {
     stdio_init_all();
-    uart_init(UART_ID, 115200);
+    uart_init(UART_ID, BAUD_RATE);
 
     // Set the TX and RX pins by using the function select on the GPIO
-    // Set datasheet for more information on function select
+    // See datasheet for more information on function select
     gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
     // Set UART flow control CTS/RTS to `false`
@@ -161,6 +161,9 @@ void setup(void) {
 
 int main(void) {
     setup();
+
+    // todo: change RTC time.
+
     while (1)
         tight_loop_contents();
 }
