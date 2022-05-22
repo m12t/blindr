@@ -2,7 +2,12 @@
 #include <stdio.h>
 
 void parse_buffer(char *buffer, char **sentences);
+<<<<<<< HEAD
 int parse_line(char *string, char **fields, int num_fields);
+=======
+int parse_line(char *string, char **fields, int max_fields);
+int get_num_fields(char *string);
+>>>>>>> 585edf7 (abandoned idea to count num fields and make arrays of precise length)
 
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -20,11 +25,30 @@ void parse_buffer(char *buffer, char **sentences) {
 	sentences[i-1] = NULL;  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
 }
 
+<<<<<<< HEAD
+=======
+int get_num_fields(char *string) {
+    // search for the numebr of `,` in the sentence to create the appropriate size array
+	int count = 0;
+	int len;
+	len = strlen(string);
+	for (int i = 0; i < len; i++) {
+		if (string[i] == ",") {
+			count++;
+		}
+	}
+	return ++count;  // field count is one greater than the number of commas
+}
+
+>>>>>>> 585edf7 (abandoned idea to count num fields and make arrays of precise length)
 
 int parse_line(char *string, char **fields, int num_fields) {
     int i = 0;
     fields[i++] = string;
+<<<<<<< HEAD
     // search for the numebr of `,` in the sentence to create the appropriate size array?
+=======
+>>>>>>> 585edf7 (abandoned idea to count num fields and make arrays of precise length)
     while ((i < num_fields) && NULL != (string = strchr(string, ','))) {
         *string = '\0';
         fields[i++] = ++string;
@@ -50,8 +74,17 @@ int main() {
 	while (sentences[i] != NULL) {
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
+<<<<<<< HEAD
 			int num_gga_fields = 18;  // 1 more
 			char *gga_fields[num_gga_fields];
+=======
+			int num_gga_fields = 17;
+			int actual_num_fields;
+			actual_num_fields = get_num_fields(string);
+			num_fields = actual_num_fields < max_fields ? actual_num_fields : max_fields;  // min of the two
+			char *gga_fields[num_fields];
+			// parse_comma_delimited_str(sentences[i], ggafields, num_gga_fields);
+>>>>>>> 585edf7 (abandoned idea to count num fields and make arrays of precise length)
 			int gga_populated;
 			gga_populated = parse_line(sentences[i], gga_fields, num_gga_fields);
 			printf("found GGA:\n%s\n", sentences[i]);  // DAT
