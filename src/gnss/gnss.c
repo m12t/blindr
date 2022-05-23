@@ -20,6 +20,9 @@
 int16_t year;
 int8_t month, day, hour, min, sec;
 
+float latitude, longitude;  // use atof() on these. float *should* be sufficient
+int north, east;  // 1 for North and East, 0 for South and West, respectively.
+
 void parse_buffer(char *buffer, char **sentences) {
     /*
     split out the buffer into individual NMEA sentences
@@ -53,8 +56,10 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
     parse_utc_time(zda_msg[1], hour, min, sec);
 }
 
-void parse_gga(char **gga_msg, double *latitude, double *longitude) {
-    
+
+
+void parse_gga(char **gga_msg, float *latitude, int *north, float *longitude, int *east) {
+    // might need to convert from minutes to degrees, depending on solar formula requirements
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
