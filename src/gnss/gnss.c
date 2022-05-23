@@ -17,6 +17,9 @@
 #define true 1
 #define false 0
 
+int16_t year;
+int8_t month, day, hour, min, sec;
+
 void parse_buffer(char *buffer, char **sentences) {
     /*
     split out the buffer into individual NMEA sentences
@@ -30,6 +33,19 @@ void parse_buffer(char *buffer, char **sentences) {
         eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
     }
 	sentences[i-1] = NULL;  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
+}
+
+void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
+                    int8_t *hour, int8_t *min, int8_t *sec) {
+    // convert the char to int and formulate the int using tens and ones places.
+    *year = atoi(zda_msg[4]);
+    *month = atoi(zda_msg[3]);
+    *day = atoi(zda_msg[2]);
+    char *time = zda_msg[1];
+    // extract the substrings for hh, mm, ss from the string `zda_msg[1]` of format: hhmmss.ss
+    *hour = 10 * (time[0] - '0') + (time[1] - '0');
+    *min = 10 * (time[2] - '0') + (time[3] - '0');
+    *sec = 10 * (time[4] - '0') + (time[5] - '0');
 }
 
 
@@ -102,27 +118,30 @@ void on_uart_rx(void) {
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
     parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
 
-    int i = 0;
+    int i = 0, valid = 0, msg_type = 0;
 	while (sentences[i] != NULL) {
-        int num_fields = 0;
+        int num_fields = 0;     // reset each iteration
         int num_populated = 0;  // reset each iteration
-        int valid = false;
 		if (strstr(sentences[i], "GGA")) {
-			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			num_fields = 18;  // 1 more
-            valid = true;  // run the below. temporarily false for testing VTG
+            msg_type = 1;
+            valid = 1;  // run the below. temporarily false for testing VTG
 		} else if (strstr(sentences[i], "ZDA")) {
 			num_fields = 10;  // 1 more
-            valid = true;  // run the below. temporarily false for testing VTG
+            msg_type = 2;
+            valid = 1;  // run the below. temporarily false for testing VTG
 		} else {
-            num_fields = 24;
-            valid = true;  // risky... ok for debugging.
+            msg_type = 0;  // not really necessary
+            valid = 0;
         }
-        // todo: read the raw data and look for ZDA sentences and check the FIFO UART/read the raw chars one by one
-
         if (valid && checksum_valid(sentences[i])) {
             char *fields[num_fields];
             num_populated = parse_line(sentences[i], fields, num_fields);
+            if (msg_type == 2) {
+                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+            } else {
+                // parse_gga(fields, latitude, longitude, etc.)
+            }
             printf("\e[1;1H\e[2J");  // clear screen
             for (int j = 0; j <= num_populated; j++) {
                 printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
