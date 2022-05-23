@@ -24,6 +24,7 @@ void parse_time(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 }
 
 int main(void) {
+    /* used for debugging--- */
     char *zda_msg[7];
     zda_msg[0] = "$GNZDA";
     zda_msg[1] = "191910.00";
@@ -32,11 +33,13 @@ int main(void) {
     zda_msg[4] = "2022";
     zda_msg[5] = "0";
     zda_msg[6] = "0";
+    /* ---used for debugging */
 
     int16_t year;
     int8_t month, day, hour, min, sec;
     parse_time(zda_msg, &year, &month, &day, &hour, &min, &sec);
 
+    /* used for debugging--- */
     printf("ID: %s\n", zda_msg[0]);
     printf("hour: %d\n", hour);
     printf("min: %d\n", min);
@@ -44,4 +47,5 @@ int main(void) {
     printf("day: %d\n", day);
     printf("month: %d\n", month);
     printf("year: %d\n", year);
+    /* ---used for debugging */
 }
