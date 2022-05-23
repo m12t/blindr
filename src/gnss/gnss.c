@@ -42,12 +42,13 @@ void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec) {
     // extract the substrings for hh, mm, ss from the UTC string of format: hhmmss.ss
     // used with both ZDA and GGA data
     *hour = 10 * (time[0] - '0') + (time[1] - '0');
-    *min = 10 * (time[2] - '0') + (time[3] - '0');
-    *sec = 10 * (time[4] - '0') + (time[5] - '0');
+    *min  = 10 * (time[2] - '0') + (time[3] - '0');
+    *sec  = 10 * (time[4] - '0') + (time[5] - '0');
 }
 
+
 void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
-                    int8_t *hour, int8_t *min, int8_t *sec) {
+               int8_t *hour, int8_t *min, int8_t *sec) {
     // convert the char to int and formulate the int using tens and ones places.
     *year = atoi(zda_msg[4]);
     *month = atoi(zda_msg[3]);
@@ -57,9 +58,15 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 }
 
 
-
-void parse_gga(char **gga_msg, float *latitude, int *north, float *longitude, int *east) {
+void parse_gga(char **gga_msg, float *latitude, int *north,
+               float *longitude, int *east) {
     // might need to convert from minutes to degrees, depending on solar formula requirements
+    *latitude = atof(gga_msg[1]);
+    *north = (toupper(gga_msg[2][0]) == 'N') ? 1 : 0;
+    *longitude = atof(gga_msg[3]);
+    *east = (toupper(gga_msg[4][0]) == 'E') ? 1 : 0;
+
+    // postprocess_lat_long - convert to pure degrees from degrees and minutes
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
@@ -152,8 +159,15 @@ void on_uart_rx(void) {
             num_populated = parse_line(sentences[i], fields, num_fields);
             if (msg_type == 2) {
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+                // only need this once on startup and every few weeks once running to correct RTC drift
+                // set_onboard_rtc();
+                printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
+
             } else {
-                // parse_gga(fields, latitude, longitude, etc.)
+                parse_gga(fields, &latitude, &north, &longitude, &east);
+                printf("\e[1;1H\e[2J");  // RBF
+                printf("latitude:  %f, North: %d\n", latitude, north);
+                printf("longitude: %f, East: %d\n", longitude, east);
             }
             printf("\e[1;1H\e[2J");  // clear screen
             for (int j = 0; j <= num_populated; j++) {
