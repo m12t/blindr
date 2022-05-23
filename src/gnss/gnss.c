@@ -1,5 +1,7 @@
 #include "gnss.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
@@ -56,11 +58,9 @@ int hexchar2int(char c) {
 int hex2int(char *c) {
     // from: https://github.com/craigpeacock/NMEA-GPS/blob/master/gps.c
 	int value;
-
 	value = hexchar2int(c[0]);
 	value = value << 4;
 	value += hexchar2int(c[1]);
-
 	return value;
 }
 
@@ -95,21 +95,18 @@ int checksum_valid(char *string) {
 
 // RX interrupt handler
 void on_uart_rx(void) {
-    size_t len = 255;  // size of the buffer in bytes
+    size_t len = 255;
     char buffer[len];  // make a buffer of size `len` for the raw message
     char *sentences[8];  // array of pointers pointing to the location of the start of each sentence within buffer
 
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
     parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
 
-    // todo: check for signal lock before using any data, especially time.
-
     int i = 0;
 	while (sentences[i] != NULL) {
         int num_fields = 0;
         int num_populated = 0;  // reset each iteration
         int valid = false;
-        // printf("(%.*s)\n", 7, sentences[i]);  // for debugging the sentence IDs found
 		if (strstr(sentences[i], "GGA")) {
 			// https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf
 			num_fields = 18;  // 1 more
@@ -167,14 +164,3 @@ int main(void) {
     while (1)
         tight_loop_contents();
 }
-// 0: $GNZDA
-// 1: 220929.00 (utc time hhmmss.ss)
-// 2: 21  (day, dd)
-// 3: 05  (month, mm)
-// 4: 2022  (year, yyyy)
-// 5: 00 (Local time zone hours; always 00)
-// 6: 00 (Local time zone minutes; always 00)
-
-
-
-
