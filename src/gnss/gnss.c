@@ -35,19 +35,27 @@ void parse_buffer(char *buffer, char **sentences) {
 	sentences[i-1] = NULL;  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
 }
 
+void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec) {
+    // extract the substrings for hh, mm, ss from the UTC string of format: hhmmss.ss
+    // used with both ZDA and GGA data
+    *hour = 10 * (time[0] - '0') + (time[1] - '0');
+    *min = 10 * (time[2] - '0') + (time[3] - '0');
+    *sec = 10 * (time[4] - '0') + (time[5] - '0');
+}
+
 void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
                     int8_t *hour, int8_t *min, int8_t *sec) {
     // convert the char to int and formulate the int using tens and ones places.
     *year = atoi(zda_msg[4]);
     *month = atoi(zda_msg[3]);
     *day = atoi(zda_msg[2]);
-    char *time = zda_msg[1];
-    // extract the substrings for hh, mm, ss from the string `zda_msg[1]` of format: hhmmss.ss
-    *hour = 10 * (time[0] - '0') + (time[1] - '0');
-    *min = 10 * (time[2] - '0') + (time[3] - '0');
-    *sec = 10 * (time[4] - '0') + (time[5] - '0');
+    // extract the substrings for hh, mm, ss from the UTC string of format: hhmmss.ss
+    parse_utc_time(zda_msg[1], hour, min, sec);
 }
 
+void parse_gga(char **gga_msg, double *latitude, double *longitude) {
+    
+}
 
 int parse_line(char *string, char **fields, int num_fields) {
     int i = 0;
