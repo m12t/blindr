@@ -18,12 +18,12 @@ void set_onboard_rt(char *zda_sentence) {
 
     // construct the datetime_t struct and populte with the parameters data
     datetime_t dt = {
-        .year = atoi(zda[4]),
-        .month = atoi(zda[3]),
-        .day = atoi(zda[2]),
-        .hour = atoi(zda[1]),
-        .min = atoi(zda[1]),
-        .sec = atoi(zda[1]),
+        .year = atoi(zda_sentence[4]),
+        .month = atoi(zda_sentence[3]),
+        .day = atoi(zda_sentence[2]),
+        .hour = atoi(zda_sentence[1]),
+        .min = atoi(zda_sentence[1]),
+        .sec = atoi(zda_sentence[1]),
     };
 
     rtc_init();

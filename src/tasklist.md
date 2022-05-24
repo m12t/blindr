@@ -2,7 +2,7 @@
 ✅
 
 
-CURRENT TASK: parsing ZDA NMEA data, manipulating into variables
+CURRENT TASK: postprocess lat long
 
 TASKS:
 ______________________________________________________________________________
@@ -17,7 +17,7 @@ ______________________________________________________________________________
 1. be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
 1. be able to power on/off gnss module as needed.
 1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs?
-
+1. on startup, wait for satellite lock.
 
 
 COMPLETE:
@@ -27,3 +27,4 @@ ______________________________________________________________________________
 ✅ parse gnss data
 ✅ be able to configure gnss module to add ZDA data (done in separate project: `gnss_config`)
 ✅ set pico RTC to a given time
+✅ parse ZDA NMEA data, manipulating into variables

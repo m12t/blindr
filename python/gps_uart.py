@@ -55,7 +55,7 @@ def convertToDegree(RawDegrees):
 
     RawAsFloat = float(RawDegrees)
     firstdigits = int(RawAsFloat/100) 
-    nexttwodigits = RawAsFloat - float(firstdigits*100) 
+    nexttwodigits = RawAsFloat - float(firstdigits*100)
     
     Converted = float(firstdigits + nexttwodigits/60.0)
     Converted = '{0:.6f}'.format(Converted) 

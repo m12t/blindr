@@ -1,11 +1,4 @@
 #include "gnss.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-#include "pico/stdlib.h"
-#include "hardware/uart.h"
-#include "hardware/irq.h"
 
 #define UART_ID uart1
 #define BAUD_RATE 115200
@@ -20,7 +13,7 @@
 int16_t year;
 int8_t month, day, hour, min, sec;
 
-float latitude, longitude;  // use atof() on these. float *should* be sufficient
+double latitude, longitude;  // use atof() on these. float *should* be sufficient
 int north, east;  // 1 for North and East, 0 for South and West, respectively.
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -57,16 +50,34 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
     parse_utc_time(zda_msg[1], hour, min, sec);
 }
 
+void to_decimal_degrees(double *position, int *direction) {
+    // convert degrees and minutes to decimal degrees
+    int whole_degrees = (int)position/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
+    int whole_minutes = (int)position - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
+    double partial_minutes = *position - (int)position;
+    *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
+    if (direction == 0) {
+        // direction is `S` or `W` -- make the position negative
+        *position *= -1;  // make it negative
+    }
+}
 
-void parse_gga(char **gga_msg, float *latitude, int *north,
-               float *longitude, int *east) {
-    // might need to convert from minutes to degrees, depending on solar formula requirements
-    *latitude = atof(gga_msg[1]);
-    *north = (toupper(gga_msg[2][0]) == 'N') ? 1 : 0;
-    *longitude = atof(gga_msg[3]);
-    *east = (toupper(gga_msg[4][0]) == 'E') ? 1 : 0;
+void parse_gga(char **gga_msg, double *latitude, int *north,
+               double *longitude, int *east) {
+    // id   : gga_msg[0]
+    // time : gga_msg[1]
+    // lat  : [2]
+    // ns   : [3]
+    // long : [4]
+    // ew   : [5]
+    *latitude = atof(gga_msg[2]);
+    *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
+    *longitude = atof(gga_msg[4]);
+    *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
 
-    // postprocess_lat_long - convert to pure degrees from degrees and minutes
+    to_decimal_degrees(latitude, north);  // pass latitude or &latitude?
+    to_decimal_degrees(longitude, east);
+
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
