@@ -53,11 +53,10 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
     // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees:
-    printf("int position: %d\n", (int)*position);
-    int whole_degrees = *position/100;               // implicit conversion to int
+    int whole_degrees = *position/100;               // implicit conversion to int after floating point arithmetic (faster)
     // get the last 2 digits before the decimal denoting whole minutes:
     int whole_minutes = *position - 100*whole_degrees;
-    double partial_minutes = *position - *position;  // implicit conversion to int
+    double partial_minutes = *position - *position;  // implicit conversion to int after floating point arithmetic (faster)
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (*direction == 0) {
         // direction is `S` or `W` -- make the position negative
@@ -77,8 +76,6 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
     *longitude = atof(gga_msg[4]);
     *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
-
-    printf("l1: latitude:  %f, longitude: %f\n", *latitude, *longitude);  // rbf
 
     to_decimal_degrees(latitude, north);
     to_decimal_degrees(longitude, east);
@@ -177,13 +174,12 @@ void on_uart_rx(void) {
                 // only need this once on startup and every few weeks once running to correct RTC drift
                 // set_onboard_rtc();
                 printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
-                printf("hour: %d, min: %d, sec: %d\n", hour, min, sec);
+                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
 
             } else {
                 printf("\e[1;1H\e[2J");  // RBF
                 parse_gga(fields, &latitude, &north, &longitude, &east);
-                printf("l3: latitude:  %f, longitude: %f\n", latitude, longitude);
-                busy_wait_ms(1000);  // rbf
+                printf("latitude:  %f, longitude: %f\n", latitude, longitude);
             }
             // printf("\e[1;1H\e[2J");  // clear screen
             // for (int j = 0; j <= num_populated; j++) {
