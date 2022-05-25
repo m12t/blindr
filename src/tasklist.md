@@ -2,7 +2,7 @@
 ✅
 
 
-CURRENT TASK: debugging parsing lat long in gnss.c
+CURRENT TASK:
 
 TASKS:
 ______________________________________________________________________________
@@ -18,6 +18,8 @@ ______________________________________________________________________________
 1. be able to power on/off gnss module as needed.
 1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs?
 1. on startup, wait for satellite lock.
+1. write lat and long to flash... although you want it to search for new lat long on each power cycle of the uC.
+        
 
 
 COMPLETE:
@@ -28,3 +30,18 @@ ______________________________________________________________________________
 ✅ be able to configure gnss module to add ZDA data (done in separate project: `gnss_config`)
 ✅ set pico RTC to a given time
 ✅ parse ZDA NMEA data, manipulating into variables
+✅ debugging parsing lat long in gnss.c
+✅ outline the system architecture:
+    - startup:
+        1. wait for GNSS signal or timeout of 10 minutes
+        1. listen for toggle switch input on boundaries
+            - store these boundaries (and midpoint for fully open) in global variables
+            - remember to sleep the stepper driver (and stepper) after each use
+    - once GNSS signal is received:
+        1. set onboard RTC
+        1. store lat, long, ns, ew in global vars
+    - enter main loop
+        1. listen for toggle switches
+        1. recalculate the next day's sunrise and sunset times at minight 00:00
+        1. move the blinds to their position prior to the events
+        1. power on and listen to the GNSS once each week to update the onboard RTC, then power the module off.
