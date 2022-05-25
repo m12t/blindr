@@ -13,7 +13,7 @@
 int16_t year;
 int8_t month, day, hour, min, sec;
 
-double latitude, longitude;  // use atof() on these. float *should* be sufficient
+double latitude = 0.0, longitude = 0.0;  // use atof() on these. float *should* be sufficient
 int north, east;  // 1 for North and East, 0 for South and West, respectively.
 
 void parse_buffer(char *buffer, char **sentences) {
@@ -52,15 +52,16 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
-    int whole_degrees = (int)position/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
-    int whole_minutes = (int)position - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
-    double partial_minutes = *position - (int)position;
+    // double pos = *position;
+    int whole_degrees = (int)(*position)/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
+    int whole_minutes = (int)(*position) - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
+    double partial_minutes = (*position) - (int)(*position);
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (direction == 0) {
         // direction is `S` or `W` -- make the position negative
         *position *= -1;  // make it negative
     }
-    printf("after to degrees: latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
+    printf("position:  %f\n", *position);  // rbf
 }
 
 void parse_gga(char **gga_msg, double *latitude, int *north,
@@ -76,10 +77,12 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     *longitude = atof(gga_msg[4]);
     *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
 
-    printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
+    printf("l1: latitude:  %f, longitude: %f\n", *latitude, *longitude);  // rbf
 
-    to_decimal_degrees(latitude, north);  // pass latitude or &latitude?
+    to_decimal_degrees(latitude, north);
     to_decimal_degrees(longitude, east);
+
+    printf("l2: latitude:  %f, longitude: %f\n", *latitude, *longitude);  // rbf
 
 }
 
@@ -181,7 +184,7 @@ void on_uart_rx(void) {
             } else {
                 printf("\e[1;1H\e[2J");  // RBF
                 parse_gga(fields, &latitude, &north, &longitude, &east);
-                printf("latitude:  %f, longitude: %f\n", latitude, longitude);
+                printf("l3: latitude:  %f, longitude: %f\n", latitude, longitude);
                 busy_wait_ms(1000);  // rbf
             }
             // printf("\e[1;1H\e[2J");  // clear screen
