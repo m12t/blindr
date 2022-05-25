@@ -82,9 +82,17 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     to_decimal_degrees(longitude, east);
 }
 
-void get_utc_offset(double longitude, uint8_t *utc_offset) {
+void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
     *utc_offset = (int)(longitude / 15);
-    // TODO: account for daylight savings...
+    // do the solar equations actually need daylight savings and offset??
+    if ((month > 3 || (month == 3 && day >= 13)) && (month < 11 || (month == 11 && day <= 6))) {
+        // a really hacky solution (not exactly on these dates every year)
+        // but then again without a large table daylight savings itself is hacky.
+        // for example, Arizona doesn't subscripe to daylight savings... so make a 
+        // coordinate geobox around AZ? surely not...
+        *utc_offset += 1;
+        printf("DST found!\n");  // rbf
+    }
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
@@ -180,8 +188,7 @@ void on_uart_rx(void) {
                 // only need this once on startup and every few weeks once running to correct RTC drift
                 // set_onboard_rtc();
                 printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
-                get_utc_offset(longitude, &utc_offset);
-                printf("offset: %d\n", utc_offset);
+                get_utc_offset(longitude, &utc_offset, month, day);
                 printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);
 
             } else {
