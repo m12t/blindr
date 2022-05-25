@@ -2,7 +2,7 @@
 ✅
 
 
-CURRENT TASK: postprocess lat long
+CURRENT TASK: debugging parsing lat long in gnss.c
 
 TASKS:
 ______________________________________________________________________________

@@ -60,6 +60,7 @@ void to_decimal_degrees(double *position, int *direction) {
         // direction is `S` or `W` -- make the position negative
         *position *= -1;  // make it negative
     }
+    printf("after to degrees: latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
 }
 
 void parse_gga(char **gga_msg, double *latitude, int *north,
@@ -74,6 +75,8 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
     *longitude = atof(gga_msg[4]);
     *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
+
+    printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
 
     to_decimal_degrees(latitude, north);  // pass latitude or &latitude?
     to_decimal_degrees(longitude, east);
@@ -173,17 +176,18 @@ void on_uart_rx(void) {
                 // only need this once on startup and every few weeks once running to correct RTC drift
                 // set_onboard_rtc();
                 printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
+                printf("hour: %d, min: %d, sec: %d\n", hour, min, sec);
 
             } else {
-                parse_gga(fields, &latitude, &north, &longitude, &east);
                 printf("\e[1;1H\e[2J");  // RBF
-                printf("latitude:  %f, North: %d\n", latitude, north);
-                printf("longitude: %f, East: %d\n", longitude, east);
+                parse_gga(fields, &latitude, &north, &longitude, &east);
+                printf("latitude:  %f, longitude: %f\n", latitude, longitude);
+                busy_wait_ms(1000);  // rbf
             }
-            printf("\e[1;1H\e[2J");  // clear screen
-            for (int j = 0; j <= num_populated; j++) {
-                printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
-            }
+            // printf("\e[1;1H\e[2J");  // clear screen
+            // for (int j = 0; j <= num_populated; j++) {
+            //     printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
+            // }
         }
 		i++;
 	}
