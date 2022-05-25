@@ -53,10 +53,11 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
     // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees:
-    int whole_degrees = *position/100;               // implicit conversion to int after floating point arithmetic (faster)
+    int whole_degrees = (*position/100);               // implicit conversion to int after floating point arithmetic (faster)
     // get the last 2 digits before the decimal denoting whole minutes:
-    int whole_minutes = *position - 100*whole_degrees;
-    double partial_minutes = *position - *position;  // implicit conversion to int after floating point arithmetic (faster)
+    int whole_minutes = (*position - 100*whole_degrees);
+    // grab everything after the decimal (the partial minutes):
+    double partial_minutes = *position - (int)*position;  // implicit conversion to int after floating point arithmetic (faster)
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (*direction == 0) {
         // direction is `S` or `W` -- make the position negative
