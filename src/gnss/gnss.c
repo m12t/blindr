@@ -52,10 +52,9 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
-    double pos = *position;  // set `pos` equal to the value of the pointer `*position`
-    int whole_degrees = (int)pos/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
-    int whole_minutes = (int)pos - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
-    double partial_minutes = pos - (int)pos;
+    int whole_degrees = (int)(*position/100);  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
+    int whole_minutes = (int)*position - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
+    double partial_minutes = *position - (int)*position;
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (*direction == 0) {
         // direction is `S` or `W` -- make the position negative
@@ -68,9 +67,9 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     // id   : gga_msg[0]
     // time : gga_msg[1]
     // lat  : [2]
-    // ns   : [3]
+    // ns   : [3]  ('N' or 'S')
     // long : [4]
-    // ew   : [5]
+    // ew   : [5]  ('E' or 'W')
     *latitude = atof(gga_msg[2]);
     *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
     *longitude = atof(gga_msg[4]);
@@ -80,9 +79,6 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 
     to_decimal_degrees(latitude, north);
     to_decimal_degrees(longitude, east);
-
-    printf("l2: latitude:  %f, longitude: %f\n", *latitude, *longitude);  // rbf
-
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
