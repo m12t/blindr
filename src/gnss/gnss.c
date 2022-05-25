@@ -11,7 +11,7 @@
 #define false 0
 
 int16_t year;
-int8_t month, day, hour, min, sec;
+int8_t month, day, hour, min, sec, utc_offset;
 
 double latitude = 0.0, longitude = 0.0;  // use atof() on these. float *should* be sufficient
 int north, east;  // 1 for North and East, 0 for South and West, respectively.
@@ -80,6 +80,11 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 
     to_decimal_degrees(latitude, north);
     to_decimal_degrees(longitude, east);
+}
+
+void get_utc_offset(double longitude, uint8_t *utc_offset) {
+    *utc_offset = (int)(longitude / 15);
+    // TODO: account for daylight savings...
 }
 
 int parse_line(char *string, char **fields, int num_fields) {
@@ -175,7 +180,9 @@ void on_uart_rx(void) {
                 // only need this once on startup and every few weeks once running to correct RTC drift
                 // set_onboard_rtc();
                 printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
-                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
+                get_utc_offset(longitude, &utc_offset);
+                printf("offset: %d\n", utc_offset);
+                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);
 
             } else {
                 printf("\e[1;1H\e[2J");  // RBF
