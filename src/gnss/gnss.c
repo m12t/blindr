@@ -52,16 +52,16 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
-    // double pos = *position;
-    int whole_degrees = (int)(*position)/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
-    int whole_minutes = (int)(*position) - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
-    double partial_minutes = (*position) - (int)(*position);
+    double pos = *position;
+    int whole_degrees = (int)pos/100;  // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees
+    int whole_minutes = (int)pos - 100*whole_degrees;  // last 2 digits before the decimal denoting whole minutes
+    double partial_minutes = pos - (int)pos;
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (direction == 0) {
         // direction is `S` or `W` -- make the position negative
         *position *= -1;  // make it negative
     }
-    printf("position:  %f\n", *position);  // rbf
+    printf("position:  %f\n", position);  // rbf
 }
 
 void parse_gga(char **gga_msg, double *latitude, int *north,
