@@ -13,8 +13,8 @@
 int16_t year;
 int8_t month, day, hour, min, sec, utc_offset;
 
-double latitude = 0.0, longitude = 0.0;  // use atof() on these. float *should* be sufficient
-int north, east, quality;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
+double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
+int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
 
 void parse_buffer(char *buffer, char **sentences) {
     /*
@@ -66,7 +66,7 @@ void to_decimal_degrees(double *position, int *direction) {
 }
 
 void parse_gga(char **gga_msg, double *latitude, int *north,
-               double *longitude, int *east, int *quality) {
+               double *longitude, int *east, int *gnss_fix) {
     // id   : gga_msg[0]
     // time : gga_msg[1]
     // lat  : [2]
@@ -77,7 +77,7 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
     *longitude = atof(gga_msg[4]);
     *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
-    *quality = atoi(gga_msg[6]);
+    *gnss_fix = atoi(gga_msg[6]);
 
     to_decimal_degrees(latitude, north);
     to_decimal_degrees(longitude, east);
@@ -181,7 +181,7 @@ void on_uart_rx(void) {
             msg_type = 0;  // not really necessary
             valid = 0;
         }
-        if (valid && checksum_valid(sentences[i])) {
+        if (gnss_fix && valid && checksum_valid(sentences[i])) {
             char *fields[num_fields];
             num_populated = parse_line(sentences[i], fields, num_fields);
             if (msg_type == 2) {
@@ -194,9 +194,9 @@ void on_uart_rx(void) {
 
             } else {
                 printf("\e[1;1H\e[2J");  // RBF
-                parse_gga(fields, &latitude, &north, &longitude, &east, &quality);
+                parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
                 printf("latitude:  %f, longitude: %f\n", latitude, longitude);
-                printf("Fix quality: %d\n", quality);
+                printf("gnss_fix: %d\n", gnss_fix);
             }
             // printf("\e[1;1H\e[2J");  // clear screen
             // for (int j = 0; j <= num_populated; j++) {

@@ -17,6 +17,6 @@ int hexchar2int(char c);
 void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
                int8_t *hour, int8_t *min, int8_t *sec);
 void parse_gga(char **gga_msg, double *latitude, int *north,
-               double *longitude, int *east, int *quality);
+               double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
 
