@@ -23,12 +23,17 @@ void parse_buffer(char *buffer, char **sentences) {
     */
     int i = 0;
     char *eol;  // end of line
+    printf("pb1\n");
     eol = strtok(buffer, "\n\r");
+    printf("pb2\n");
     while (eol != NULL) {
+        printf("not null, %s\n", eol);
 		sentences[i++] = eol;
         eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
     }
-	sentences[i-1] = NULL;  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
+    printf("pb3\n");
+    // I think the fault is coming from here... setting a negative index when i=0...
+	sentences[i-1] = {NULL};  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
 }
 
 void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec) {
@@ -73,14 +78,16 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     // ns   : [3]  ('N' or 'S')
     // long : [4]
     // ew   : [5]  ('E' or 'W')
-    *latitude = atof(gga_msg[2]);
-    *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
-    *longitude = atof(gga_msg[4]);
-    *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
     *gnss_fix = atoi(gga_msg[6]);
+    if (gnss_fix) {
+        *latitude = atof(gga_msg[2]);
+        *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
+        *longitude = atof(gga_msg[4]);
+        *east = (toupper(gga_msg[5][0]) == 'E') ? 1 : 0;
 
-    to_decimal_degrees(latitude, north);
-    to_decimal_degrees(longitude, east);
+        to_decimal_degrees(latitude, north);
+        to_decimal_degrees(longitude, east);
+    }
 }
 
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
@@ -96,7 +103,7 @@ void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t 
     }
 }
 
-int parse_line(char *string, char **fields, int num_fields) {
+void parse_line(char *string, char **fields, int num_fields) {
     int i = 0;
     fields[i++] = string;
     // search for the numebr of `,` in the sentence to create the appropriate size array?
@@ -104,7 +111,6 @@ int parse_line(char *string, char **fields, int num_fields) {
         *string = '\0';
         fields[i++] = ++string;
     }
-	return --i;  // move index back 1 to return the num_populated fields
 }
 
 int hexchar2int(char c) {
@@ -160,51 +166,56 @@ int checksum_valid(char *string) {
 void on_uart_rx(void) {
     size_t len = 255;
     char buffer[len];  // make a buffer of size `len` for the raw message
-    char *sentences[8];  // array of pointers pointing to the location of the start of each sentence within buffer
-
+    char *sentences[8] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
+    printf("d1\n");
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
+    printf("d2\n");
     parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
+    printf("buffer: \n%s\n", buffer);
+    printf("strlen: %d, sizeof: %d", strlen(sentences[0]), sizeof(sentences[0]));
+    printf("d3\n");
 
-    int i = 0, valid = 0, msg_type = 0;
-	while (sentences[i] != NULL) {
-        int num_fields = 0;     // reset each iteration
-        int num_populated = 0;  // reset each iteration
+    int i=0, valid=0, msg_type = 0, num_fields=0;
+	while (sentences[i]) {
+        printf("d4\n");
+        printf("sentences[i]: \n%s\n", sentences[i]);
+        num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
+            printf("d5\n");
 			num_fields = 18;  // 1 more
             msg_type = 1;
             valid = 1;  // run the below. temporarily false for testing VTG
 		} else if (strstr(sentences[i], "ZDA")) {
+            printf("d6\n");
 			num_fields = 10;  // 1 more
             msg_type = 2;
             valid = 1;  // run the below. temporarily false for testing VTG
 		} else {
+            printf("d7\n");
             msg_type = 0;  // not really necessary
             valid = 0;
         }
-        if (gnss_fix && valid && checksum_valid(sentences[i])) {
+        if (valid && checksum_valid(sentences[i])) {
+            printf("d8\n");
             char *fields[num_fields];
-            num_populated = parse_line(sentences[i], fields, num_fields);
-            if (msg_type == 2) {
-                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                // only need this once on startup and every few weeks once running to correct RTC drift
-                // set_onboard_rtc();
-                printf("\e[1;1H\e[2J");  // RBF - remove before flight (this is for debugging)
-                get_utc_offset(longitude, &utc_offset, month, day);
-                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);
-
-            } else {
-                printf("\e[1;1H\e[2J");  // RBF
+            parse_line(sentences[i], fields, num_fields);
+            if (msg_type == 1) {
+                // always parse this as it has the `gnss_fix` flag
                 parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
-                printf("latitude:  %f, longitude: %f\n", latitude, longitude);
-                printf("gnss_fix: %d\n", gnss_fix);
-            }
-            // printf("\e[1;1H\e[2J");  // clear screen
-            // for (int j = 0; j <= num_populated; j++) {
-            //     printf("%d: %s\n", j, fields[j]);  // extract values or whatever.
-            // }
+                printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
+                printf("gnss_fix: %d\n", gnss_fix);  // rbf
+            } else if (msg_type == 2 && gnss_fix) {
+                // only parse if there is a fix
+                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+                get_utc_offset(longitude, &utc_offset, month, day);
+                // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);
+                // TODO: fix bug where utc time is less than the offset and the clock time is negative...
+                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
+            } else {}
         }
 		i++;
 	}
+    printf("-----------------------\n");
 }
 
 void setup(void) {
