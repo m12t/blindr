@@ -1,7 +1,7 @@
 #include "gnss.h"
 
 #define UART_ID uart1
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY UART_PARITY_NONE
@@ -16,24 +16,23 @@ int8_t month, day, hour, min, sec, utc_offset;
 double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
 int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
 
-void parse_buffer(char *buffer, char **sentences) {
+void parse_buffer(char *buffer, char **sentences, int max_sentences) {
     /*
     split out the buffer into individual NMEA sentences
     which are terminated by <cr><lf> aka `\r\n`
     */
+    printf("max sentences: %d\n", max_sentences);
     int i = 0;
     char *eol;  // end of line
-    printf("pb1\n");
     eol = strtok(buffer, "\n\r");
-    printf("pb2\n");
-    while (eol != NULL) {
-        printf("not null, %s\n", eol);
+    while (eol != NULL && i < max_sentences) {
 		sentences[i++] = eol;
         eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
     }
-    printf("pb3\n");
-    // I think the fault is coming from here... setting a negative index when i=0...
-	sentences[i-1] = {NULL};  // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
+    if (i > 0) {
+        // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
+	    sentences[i-1] = NULL;
+    }
 }
 
 void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec) {
@@ -164,39 +163,29 @@ int checksum_valid(char *string) {
 
 // RX interrupt handler
 void on_uart_rx(void) {
-    size_t len = 255;
+    size_t len = 512;
     char buffer[len];  // make a buffer of size `len` for the raw message
-    char *sentences[8] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
-    printf("d1\n");
+    char *sentences[16] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
-    printf("d2\n");
-    parse_buffer(buffer, sentences);  // split the monolithic buffer into discrete sentences
-    printf("buffer: \n%s\n", buffer);
-    printf("strlen: %d, sizeof: %d", strlen(sentences[0]), sizeof(sentences[0]));
-    printf("d3\n");
+    parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));  // split the monolithic buffer into discrete sentences
 
     int i=0, valid=0, msg_type = 0, num_fields=0;
 	while (sentences[i]) {
-        printf("d4\n");
-        printf("sentences[i]: \n%s\n", sentences[i]);
+        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
-            printf("d5\n");
 			num_fields = 18;  // 1 more
             msg_type = 1;
             valid = 1;  // run the below. temporarily false for testing VTG
 		} else if (strstr(sentences[i], "ZDA")) {
-            printf("d6\n");
 			num_fields = 10;  // 1 more
             msg_type = 2;
             valid = 1;  // run the below. temporarily false for testing VTG
 		} else {
-            printf("d7\n");
             msg_type = 0;  // not really necessary
             valid = 0;
         }
         if (valid && checksum_valid(sentences[i])) {
-            printf("d8\n");
             char *fields[num_fields];
             parse_line(sentences[i], fields, num_fields);
             if (msg_type == 1) {

@@ -7,7 +7,7 @@
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 
-void parse_buffer(char *buffer, char **sentences);
+void parse_buffer(char *buffer, char **sentences, int max_sentences);
 void parse_line(char *string, char **fields, int num_fields);
 int checksum_valid(char *string);
 void on_uart_rx(void);
