@@ -1,7 +1,12 @@
+#ifndef SETUP_H
+#define SETUP_H
+
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/util/datetime.h"
 #include "hardware/rtc.h"
+
+#endif
 
 // ZDA field format
 // 0: $xxZDA
@@ -28,4 +33,28 @@ void set_onboard_rt(char *zda_sentence) {
 
     rtc_init();
     rtc_set_datetime(&dt);
+}
+
+void pico_setup(void) {
+    // top level setup function. Sets up UART, etc.
+    stdio_init_all();  // rbf
+    uart_init(UART_ID, BAUD_RATE);
+
+    // Set the TX and RX pins by using the function select on the GPIO
+    // See datasheet for more information on function select
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    // Set UART flow control CTS/RTS to `false`
+    uart_set_hw_flow(UART_ID, false, false);
+    // Set data format
+    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
+    // Turn on FIFO's - throughput is valued over latency.
+    uart_set_fifo_enabled(UART_ID, true);
+    // Set up a RX interrupt
+    int UART_IRQ = UART1_IRQ;
+    // And set up and enable the interrupt handlers
+    irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
+    irq_set_enabled(UART_IRQ, true);
+    // Now enable the UART to send interrupts - RX only
+    uart_set_irq_enables(UART_ID, true, false);
 }

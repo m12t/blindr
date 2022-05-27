@@ -26,6 +26,8 @@ int main(void) {
     double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
     int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
 
+    stdio_init_all();  // rbf - used for debugging
+
     uart_setup()  // for connecting to GNSS module
 
     while (1) {
