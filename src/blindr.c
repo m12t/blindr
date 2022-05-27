@@ -1,5 +1,4 @@
-#include "gnss/gnss.c"
-
+#include "gnss.h"
 
 int main(void) {
     printf("did global main work??...\n");
