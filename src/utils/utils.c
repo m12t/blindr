@@ -10,21 +10,21 @@
 // 6: 00 (Local time zone minutes; always 00)
 
 // void set_onboard_rtc(int year, int month, int day, int hour, int min, int sec) {
-void set_onboard_rt(int16_t *year, int8_t *month, int8_t day,
-                    int8_t *hour, int8_t *min, int8_t *sec) {
+void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
+                    int8_t hour, int8_t min, int8_t sec) {
     /* receive parsed ZDA data and populate set the RTC to the current time */
 
     // construct the datetime_t struct and populte with the parameters data
     datetime_t dt = {
-        .year = *year,
-        .month = atoi(zda_sentence[3]),
-        .day = atoi(zda_sentence[2]),
-        .hour = atoi(zda_sentence[1]),
-        .min = atoi(zda_sentence[1]),
-        .sec = atoi(zda_sentence[1]),
+        .year = year,
+        .month = month,
+        .day = day,
+        .hour = hour,
+        .min = min,
+        .sec = sec,
     };
 
-    rtc_init();
+    rtc_init();  // what's the behavior of calling this once the rtc is already initialized?
     rtc_set_datetime(&dt);
 }
 
@@ -50,4 +50,15 @@ void pico_setup(void) {
     irq_set_enabled(UART_IRQ, true);
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(UART_ID, true, false);
+}
+
+
+void stepper_setup(void) {
+    gpio_init(SLEEP_PIN);
+    gpio_init(STEP_PIN);
+    gpio_init(DIRECTION_PIN);
+
+    gpio_set_dir(SLEEP_PIN, GPIO_OUT);
+    gpio_set_dir(STEP_PIN, GPIO_OUT);
+    gpio_set_dir(DIRECTION_PIN, GPIO_OUT);
 }

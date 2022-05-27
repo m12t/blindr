@@ -9,15 +9,6 @@
 #define DIRECTION_PIN 15
 
 int stepper_main() {
-    stdio_init_all();  // for debugging and prining to console
-    gpio_init(SLEEP_PIN);
-    gpio_init(STEP_PIN);
-    gpio_init(DIRECTION_PIN);
-
-    gpio_set_dir(SLEEP_PIN, GPIO_OUT);
-    gpio_set_dir(STEP_PIN, GPIO_OUT);
-    gpio_set_dir(DIRECTION_PIN, GPIO_OUT);
-
     gpio_put(SLEEP_PIN, 0);
 
     int counter = 0;

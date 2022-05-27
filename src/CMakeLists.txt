@@ -9,12 +9,12 @@ set(CMAKE_C_STANDARD 11)
 
 pico_sdk_init()
 
-add_subdirectory(./setup)
+add_subdirectory(./utils)
 add_subdirectory(./gnss)
 add_subdirectory(./stepper)
 
 add_executable(blindr blindr.c)
-target_link_libraries(blindr setup gnss stepper)
+target_link_libraries(blindr utils gnss stepper)
 
 pico_enable_stdio_usb(blindr 0)  # 0 before deployment - also remove all printf() statements
 pico_enable_stdio_uart(blindr 1) # 0 before deployment
