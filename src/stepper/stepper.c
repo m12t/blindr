@@ -1,5 +1,4 @@
-#include <stdio.h>  // for debugging
-#include "pico/stdlib.h"
+#include "../blindr.h"
 
 // any free gpio pins can work for the below,
 // orient wherever it is easiest for soldering

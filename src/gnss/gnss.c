@@ -1,20 +1,6 @@
+#include "../blindr.h"
 #include "gnss.h"
 
-#define UART_ID uart1
-#define BAUD_RATE 9600
-#define DATA_BITS 8
-#define STOP_BITS 1
-#define PARITY UART_PARITY_NONE
-#define UART_TX_PIN 4
-#define UART_RX_PIN 5
-#define true 1
-#define false 0
-
-int16_t year;
-int8_t month, day, hour, min, sec, utc_offset;
-
-double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
-int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
 
 void parse_buffer(char *buffer, char **sentences, int max_sentences) {
     /*

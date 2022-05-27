@@ -1,4 +1,5 @@
-#include "setup.h"
+#include "../blindr.h"
+#include "utils.h"  // needed??
 
 // ZDA field format
 // 0: $xxZDA
@@ -28,7 +29,7 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
     rtc_set_datetime(&dt);
 }
 
-void pico_setup(void) {
+void pico_init() {
     // top level setup function. Sets up UART, etc.
     stdio_init_all();  // rbf
     uart_init(UART_ID, BAUD_RATE);
@@ -53,7 +54,7 @@ void pico_setup(void) {
 }
 
 
-void stepper_setup(void) {
+void stepper_init(void) {
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
     gpio_init(DIRECTION_PIN);
