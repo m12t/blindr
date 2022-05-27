@@ -190,14 +190,18 @@ void on_uart_rx(void) {
             parse_line(sentences[i], fields, num_fields);
             if (msg_type == 1) {
                 // always parse this as it has the `gnss_fix` flag
+                // this only needs to run once on startup.
                 parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
                 printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
                 printf("gnss_fix: %d\n", gnss_fix);  // rbf
             } else if (msg_type == 2 && gnss_fix) {
                 // only parse if there is a fix
+                // keep a variable clock_last_set to a date and only reset the clock after a certain amount of time
+                // to avoid constantly changing it.
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
                 get_utc_offset(longitude, &utc_offset, month, day);
-                // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);
+                // enact_utc_offset(&year, &month, &day, &hour, utc_offset);  // carful about bug where you get a negative hour...
+                set_onboard_rtc(year, month, day, hour, min, sec, utc_offset);
                 // TODO: fix bug where utc time is less than the offset and the clock time is negative...
                 printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
             } else {}

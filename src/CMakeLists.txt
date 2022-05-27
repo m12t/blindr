@@ -9,9 +9,9 @@ set(CMAKE_C_STANDARD 11)
 
 pico_sdk_init()
 
+add_subdirectory(./setup)
 add_subdirectory(./gnss)
-# include_directories(gnss)  # so subdirs are seen
-# link_directories(gnss)
+add_subdirectory(./stepper)
 
 add_executable(blindr blindr.c)
 target_link_libraries(blindr setup gnss stepper)

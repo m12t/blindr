@@ -1,5 +1,5 @@
 #include "gnss.h"
-// #include "setup.h"
+// #include "setup.h"  // doesn't exist yet
 
 // uart config
 #define UART_ID uart1

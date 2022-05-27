@@ -1,12 +1,4 @@
-#ifndef SETUP_H
-#define SETUP_H
-
-#include <stdio.h>
-#include "pico/stdlib.h"
-#include "pico/util/datetime.h"
-#include "hardware/rtc.h"
-
-#endif
+#include "setup.h"
 
 // ZDA field format
 // 0: $xxZDA
@@ -18,12 +10,13 @@
 // 6: 00 (Local time zone minutes; always 00)
 
 // void set_onboard_rtc(int year, int month, int day, int hour, int min, int sec) {
-void set_onboard_rt(char *zda_sentence) {
+void set_onboard_rt(int16_t *year, int8_t *month, int8_t day,
+                    int8_t *hour, int8_t *min, int8_t *sec) {
     /* receive parsed ZDA data and populate set the RTC to the current time */
 
     // construct the datetime_t struct and populte with the parameters data
     datetime_t dt = {
-        .year = atoi(zda_sentence[4]),
+        .year = *year,
         .month = atoi(zda_sentence[3]),
         .day = atoi(zda_sentence[2]),
         .hour = atoi(zda_sentence[1]),
