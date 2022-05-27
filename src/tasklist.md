@@ -8,7 +8,6 @@ TASKS:
 ______________________________________________________________________________
 1. set pico RTC using parsed ZDA datetime data
     ✅ be able to parse NMEA data and manipulate variables into the desired types
-1. use lat long to get the UTC offset to be able to use the ZDA-given UTC time for RTC
 
 1. listen to and act on the 3 position toggle switch for manually controlling blindr
 1. write out the code for stepper edge finding based on startup protocol.
@@ -45,3 +44,7 @@ ______________________________________________________________________________
         1. move the blinds to their position prior to the events
         1. power on and listen to the GNSS once each week to update the onboard RTC, then power the module off.
 ❌ write lat and long to flash... although you want it to search for new lat long on each power cycle of the uC.
+✅ use lat long to get the UTC offset to be able to use the ZDA-given UTC time for RTC
+    > daylight savings was *roughly* taken into account as well
+
+
