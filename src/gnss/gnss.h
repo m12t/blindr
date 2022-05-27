@@ -19,4 +19,5 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
+int gnss_main(void);
 

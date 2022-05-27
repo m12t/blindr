@@ -231,10 +231,8 @@ void setup(void) {
 }
 
 
-int main(void) {
+int gnss_main(void) {
     setup();
-
-    // todo: change RTC time.
 
     while (1)
         tight_loop_contents();

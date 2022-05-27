@@ -18,8 +18,7 @@ ______________________________________________________________________________
 1. be able to power on/off gnss module as needed.
 1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs?
 1. on startup, wait for satellite lock.
-1. write lat and long to flash... although you want it to search for new lat long on each power cycle of the uC.
-        
+1. the configurations can't be saved to flash on the GNSS chip, so code will need to be added to change the configs every startup.
 
 
 COMPLETE:
@@ -45,3 +44,4 @@ ______________________________________________________________________________
         1. recalculate the next day's sunrise and sunset times at minight 00:00
         1. move the blinds to their position prior to the events
         1. power on and listen to the GNSS once each week to update the onboard RTC, then power the module off.
+❌ write lat and long to flash... although you want it to search for new lat long on each power cycle of the uC.

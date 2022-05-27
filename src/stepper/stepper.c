@@ -8,7 +8,7 @@
 #define STEP_PIN 14
 #define DIRECTION_PIN 15
 
-int main() {
+int stepper_main() {
     stdio_init_all();  // for debugging and prining to console
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
