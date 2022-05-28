@@ -22,13 +22,19 @@ void wake_stepper() {
 
 void sleep_stepper() {
     gpio_put(SLEEP_PIN, 0);
+    sleep_ms(1);  // purely a safety margin
 }
 
 int single_step(uint direction) {
-    wake_stepper();  // if calling this many times, you don't want to
+    // take a single step in the given direction
+    wake_stepper();
 
-    // set the stepper going in the correct direction
-    gpio_put(DIRECTION_PIN, direction);
+    if (gpio_get_out_level(DIRECTION_PIN) != direction) {
+        // apparently gpio_get_out_level() should NOT be used like this
+        // according to https://raspberrypi.github.io/pico-sdk-doxygen/group__hardware__gpio.html#ga0a818ceaa50e3e2317fbb0856d47eaef
+        // set the stepper going in the correct direction
+        gpio_put(DIRECTION_PIN, direction);
+    }
     // a single step is a rising edge. Do this by setting low then setting high
     gpio_put(STEP_PIN, 0);
     sleep_us(30);  // give a healthy margin between signals
@@ -44,6 +50,8 @@ int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
     // and step to the desired destination, updating the current position pointer along the way
     // return 0 for no action taken, 1 for step(s) were performed. It's not necessary to return the number
     // or net number of steps taken as *current_position is updated each step here.
+
+    wake_stepper();
 
     // check that the inputs are valid
     if ((desired_position < 0) ||

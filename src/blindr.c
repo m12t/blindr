@@ -17,6 +17,6 @@ int main(void) {
     stepper_init();
 
     while (1) {
-        // 
+        // main program loop
     }
 }
