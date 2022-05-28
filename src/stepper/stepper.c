@@ -28,6 +28,7 @@ void sleep_stepper() {
 int single_step(uint direction) {
     // take a single step in the given direction. This is used within a loop
     // when using the 3 position toggle switch to "show" the program the blinds boundaries.
+    // it's also used to move the blinds manually with the toggle switch.
     // NOTE: This function doesn't automatically wake and sleep the stepper!!!
     //       this is done on purpose since this loop will run thousands of times when
     //       finding the boundaries. Sleeping and waking the driver board 1000 times will place
@@ -42,6 +43,35 @@ int single_step(uint direction) {
     gpio_put(STEP_PIN, 1);
 
     return 0;  // a step was completed normally
+}
+
+
+int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pin) {
+    // alternate to single step() where this function reads the toggle switch value
+    // directly and also modifies the current position automatically.
+
+    // TODO: get the direction based on the toggle switch pulled high...
+
+    wake_stepper();
+
+    uint direction = toggle_pin == 14 ? 1 : 0;  // pseudocode...
+    gpio_put(DIRECTION_PIN, direction);
+
+    while ((gpio_get(toggle_pin)) &&
+           (*current_position < BOUNDARY_HIGH) &&
+           (*current_position > 0)) {
+        // the pin is still pulled high and the position is within the range, steep
+        stepper_step(current_position);
+    }   
+
+    sleep_stepper();
+}
+
+void stepper_step(uint *current_position) {
+    gpio_put(STEP_PIN, 0);
+    sleep_us(30);  // give a healthy margin between signals
+    gpio_put(STEP_PIN, 1);
+    *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
 }
 
 int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
@@ -64,10 +94,7 @@ int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 0 : 1;  // change this to whatever ends up being up and down on the blinds
         gpio_put(DIRECTION_PIN, direction);
-        gpio_put(STEP_PIN, 0);
-        sleep_us(30);  // give a healthy margin between signals
-        gpio_put(STEP_PIN, 1);
-        *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
+        stepper_step(current_position);
     }
 
     sleep_stepper();
