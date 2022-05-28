@@ -13,7 +13,7 @@ int main(void) {
 
     stdio_init_all();  // rbf - used for debugging
 
-    uart_setup()  // for connecting to GNSS module
+    gnss_init();  // for connecting to GNSS module
 
     while (1) {
         // 
