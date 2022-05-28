@@ -6,6 +6,9 @@ CURRENT TASK:
 
 TASKS:
 ______________________________________________________________________________
+1. work through handing the latitude and longitude vars which get used in on_uart_rx() within gnss.c but are local to
+the main() of blindr.c... and on_uart_rx() can't receive any parameters...
+    > handle uart within main() of blindr.c is the simplest solution.
 1. set pico RTC using parsed ZDA datetime data
     ✅ be able to parse NMEA data and manipulate variables into the desired types
 
@@ -15,7 +18,7 @@ ______________________________________________________________________________
 1. build out the solar functions (sunrise/sunset,etc.)
 1. be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
 1. be able to power on/off gnss module as needed.
-1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs?
+1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs? (don't actually want non-volatile mem since you want new coordinates on each power cycle as a way to reset the coordinates, example if you move across the country.)
 1. on startup, wait for satellite lock.
 1. the configurations can't be saved to flash on the GNSS chip, so code will need to be added to change the configs every startup.
 

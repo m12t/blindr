@@ -15,34 +15,26 @@ void stepper_init(void) {
     sleep_stepper();  // default to sleeping the stepper
 }
 
+
 void wake_stepper() {
     gpio_put(SLEEP_PIN, 1);  // current is now flowing throught the stepper
     sleep_ms(2);  // per instructions, leave >1ms after sleep before step input
 }
+
 
 void sleep_stepper() {
     gpio_put(SLEEP_PIN, 0);
     sleep_ms(2);  // purely a safety margin
 }
 
-int single_step(uint direction) {
-    // take a single step in the given direction. This is used within a loop
-    // when using the 3 position toggle switch to "show" the program the blinds boundaries.
-    // it's also used to move the blinds manually with the toggle switch.
-    // NOTE: This function doesn't automatically wake and sleep the stepper!!!
-    //       this is done on purpose since this loop will run thousands of times when
-    //       finding the boundaries. Sleeping and waking the driver board 1000 times will place
-    //       unnecessary stress on the components. Just be sure to call wake_stepper() before
-    //       calling this function and sleep_stepper() after. Later when blinds movement are
-    //       automated, step_to() will be used and that handles waking and sleeping internally.
 
-    gpio_put(DIRECTION_PIN, direction);  // the recommended solution is just to write this each
-    // a single step is a rising edge. Do this by setting low then setting high
+void single_step(uint *current_position, uint direction) {
+    // create a single rising edge to trigger a single step and
+    // update the current position accordingly
     gpio_put(STEP_PIN, 0);
     sleep_us(30);  // give a healthy margin between signals
     gpio_put(STEP_PIN, 1);
-
-    return 0;  // a step was completed normally
+    *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
 }
 
 
@@ -50,31 +42,23 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     // alternate to single step() where this function reads the toggle switch value
     // directly and also modifies the current position automatically.
 
-    // TODO: get the direction based on the toggle switch pulled high...
-
     wake_stepper();
 
-    uint direction = toggle_pin == 14 ? 1 : 0;  // pseudocode...
+    uint direction = toggle_pin == 14 ? 1 : 0;  // pseudocode... TODO: get the direction based on the toggle switch pulled high...
     gpio_put(DIRECTION_PIN, direction);
 
     while ((gpio_get(toggle_pin)) &&
            (*current_position < BOUNDARY_HIGH) &&
            (*current_position > 0)) {
         // the pin is still pulled high and the position is within the range, steep
-        stepper_step(current_position);
+        single_step(current_position, direction);
     }   
 
     sleep_stepper();
 }
 
-void stepper_step(uint *current_position) {
-    gpio_put(STEP_PIN, 0);
-    sleep_us(30);  // give a healthy margin between signals
-    gpio_put(STEP_PIN, 1);
-    *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
-}
 
-int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
+int step_to_position(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
     // receive the current position, desired_position, and high boundary (low boundary is normalized to 0)
     // and step to the desired destination, updating the current position pointer along the way
     // return 0 for no action taken, 1 for step(s) were performed. It's not necessary to return the number
@@ -94,7 +78,7 @@ int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 0 : 1;  // change this to whatever ends up being up and down on the blinds
         gpio_put(DIRECTION_PIN, direction);
-        stepper_step(current_position);
+        single_step(current_position, direction);
     }
 
     sleep_stepper();
