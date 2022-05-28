@@ -24,7 +24,7 @@ void sleep_stepper() {
     gpio_put(SLEEP_PIN, 0);
 }
 
-int single_step(int direction) {
+int single_step(uint direction) {
     wake_stepper();  // if calling this many times, you don't want to
 
     // set the stepper going in the correct direction
@@ -36,24 +36,25 @@ int single_step(int direction) {
 
     sleep_stepper();
 
-    return 2*direction-1;  // a step was completed, return the direction-aware step distance [-1, 1]
+    return 0;  // a step was completed normally
 }
 
-int step_to(int *current_position, int desired_position, int BOUNDARY_HIGH) {
+int step_to(uint *current_position, uint desired_position, uint BOUNDARY_HIGH) {
     // receive the current position, desired_position, and high boundary (low boundary is normalized to 0)
     // and step to the desired destination, updating the current position pointer along the way
+    // return 0 for no action taken, 1 for step(s) were performed. It's not necessary to return the number
+    // or net number of steps taken as *current_position is updated each step here.
 
     // check that the inputs are valid
     if ((desired_position < 0) ||
         (desired_position > BOUNDARY_HIGH) ||
         (desired_position == *current_position)) {
         // invalid input or no movement necessary
-        return 0;  // no steps taken
+        return 1;  // no steps taken
     }
 
     wake_stepper();
-    int direction;
-    int net_steps_taken = 0;  // not really needed
+    uint direction;
 
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 0 : 1;  // change this to whatever ends up being up and down on the blinds
@@ -62,9 +63,8 @@ int step_to(int *current_position, int desired_position, int BOUNDARY_HIGH) {
         sleep_us(30);  // give a healthy margin between signals
         gpio_put(STEP_PIN, 1);
         *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
-        net_steps_taken += 2*direction - 1;
     }
 
     sleep_stepper();
-    return net_steps_taken;  // not really needed since the value in current_position is updated via the pointer
+    return 0;
 }
