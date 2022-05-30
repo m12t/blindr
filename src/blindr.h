@@ -13,3 +13,7 @@
 // toggle configs
 // #define UP_PIN {num}
 // #define DOWN_PIN {num}
+
+
+int setup_uart();
+void on_uart_rx(double longitude, double latitude, int north, int east, int gnss_fix);

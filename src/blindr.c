@@ -1,6 +1,7 @@
 #include "blindr.h"
 #include "gnss.h"
 #include "utils.h"
+#include "stepper.h"
 
 
 int main(void) {
@@ -15,7 +16,7 @@ int main(void) {
 
     stdio_init_all();  // rbf - used for debugging
 
-    gnss_init();  // for connecting to GNSS module
+    setup_uart();  // for connecting to GNSS module
     stepper_init();
 
     while (1) {
@@ -25,11 +26,16 @@ int main(void) {
 }
 
 
-// RX interrupt handler
-void on_uart_rx(void) {
+void on_uart_rx(double longitude, double latitude, int north, int east, int gnss_fix) {
+    // RX interrupt handler
+
+    // checkpoint: todo: minimize this function as much as possible and remove all application logic from this
+    // isr. use a ring buffer (in future use DMA/PIO if possible)
+    // although... just get this running and then worry about making it better.
+
     size_t len = 255;
     char buffer[len];  // make a buffer of size `len` for the raw message
-    char *sentences[16] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
+    char *sentences[16] = { NULL };  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
     parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));  // split the monolithic buffer into discrete sentences
 
@@ -62,22 +68,24 @@ void on_uart_rx(void) {
                 // only parse if there is a fix
                 // keep a variable clock_last_set to a date and only reset the clock after a certain amount of time
                 // to avoid constantly changing it.
-                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                get_utc_offset(longitude, &utc_offset, month, day);
-                // enact_utc_offset(&year, &month, &day, &hour, utc_offset);  // carful about bug where you get a negative hour...
-                set_onboard_rtc(year, month, day, hour, min, sec, utc_offset);
+                // parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+                // get_utc_offset(longitude, &utc_offset, month, day);
+                // // enact_utc_offset(&year, &month, &day, &hour, utc_offset);  // carful about bug where you get a negative hour...
+                // set_onboard_rtc(year, month, day, hour, min, sec, utc_offset);
                 // TODO: fix bug where utc time is less than the offset and the clock time is negative...
-                printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
+                // printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
             } else {}
         }
 		i++;
 	}
-    printf("-----------------------\n");
+    printf("-----------------------\n");  // rbf
 }
 
 
-void setup_uart() {
+int setup_uart() {
     // setup uart comms between the GNSS module and pico
+
+
     uart_init(UART_ID, BAUD_RATE);
     // Set the TX and RX pins by using the function select on the GPIO
     // See datasheet for more information on function select
@@ -100,4 +108,5 @@ void setup_uart() {
     // todo: config the gnss module (baud rate, add ZDA, etc.)
     // todo: wait for a fix
 
+    return 0;
 }

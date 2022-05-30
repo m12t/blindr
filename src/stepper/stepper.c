@@ -1,6 +1,5 @@
 #include "../blindr.h"  // for global defines
 #include "stepper.h"
-#include "pico/stdlib.h"  // GPIO_OUT, etc.
 
 
 void stepper_init(void) {

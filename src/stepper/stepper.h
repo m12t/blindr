@@ -1,3 +1,8 @@
+#include <stdlib.h>
+#include <stdint.h>  // needed for int8_t and int16_t
+#include <ctype.h>
+#include "pico/stdlib.h"  // GPIO_OUT, etc.
+
 #define SLEEP_PIN 13
 #define STEP_PIN 14
 #define DIRECTION_PIN 15

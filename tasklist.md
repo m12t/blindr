@@ -3,6 +3,8 @@
 
 
 CURRENT TASK:
+reading toggle switch via pio
+
 
 TASKS:
 ______________________________________________________________________________
@@ -21,6 +23,11 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
 1. evaluate the best way to manage the global variables like lat & long, etc. can they be written to non-volatile memory? which structure of storage is best, simple global vars or structs? (don't actually want non-volatile mem since you want new coordinates on each power cycle as a way to reset the coordinates, example if you move across the country.)
 1. on startup, wait for satellite lock.
 1. the configurations can't be saved to flash on the GNSS chip, so code will need to be added to change the configs every startup.
+1. use PIO and interrupts on GPIO (toggle switch) to efficiently wait on input instead of bit banging
+    > see: logic_analyser.c example in pico-examples/pio
+1. use PIO for controlling the stepper instead of bit banging the rising edge? no. GPIO is sufficient
+1. replace the GNSS uart interrupt architecture with PIO and DMA
+1. precisely calculate daylight savings times using day of the week (see: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html). This also means setting the DOTW in the datetime struct.
 
 
 COMPLETE:
