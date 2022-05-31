@@ -28,11 +28,11 @@ void sleep_stepper() {
 }
 
 
-void single_step(uint *current_position, uint direction) {
+void single_step(uint *current_position, uint direction, uint sleep_time) {
     // create a single rising edge to trigger a single step and
     // update the current position accordingly
     gpio_put(STEP_PIN, 0);
-    busy_wait_ms(30);  // give a healthy margin between signals - busy wait needed during interrupt
+    busy_wait_ms(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
     gpio_put(STEP_PIN, 1);
     *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
     printf("single step, pos: %d\n", *current_position);  // rbf
@@ -57,7 +57,7 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
             break;
         } else {
             // a valid step can be taken, do so:
-            single_step(current_position, direction);
+            single_step(current_position, direction, 30);
         }
     }
     sleep_stepper();
@@ -84,7 +84,7 @@ int step_to_position(uint *current_position, uint desired_position, uint BOUNDAR
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 0 : 1;  // change this to whatever ends up being up and down on the blinds
         gpio_put(DIRECTION_PIN, direction);
-        single_step(current_position, direction);
+        single_step(current_position, direction, 30);
     }
 
     sleep_stepper();

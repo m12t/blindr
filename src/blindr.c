@@ -38,7 +38,7 @@ void reenable_interrupts_for(uint gpio, int event) {
     gpio_set_irq_enabled_with_callback(gpio, event, true, &toggle_callback);
 }
 
-void set_automation_status(void) {
+void set_automation_state(void) {
     // read the state of the toggle gpio pins
     busy_wait_ms(250);  // eliminate mechanical switch bounce
     if (gpio_get(GPIO_TOGGLE_DOWN_PIN) == 0 || gpio_get(GPIO_TOGGLE_UP_PIN) == 0) {
@@ -67,17 +67,17 @@ void find_boundary(uint gpio) {
     uint dir = gpio == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir);
+        single_step(&current_position, dir, 30);
     }
     // update the respective boundary
     if (gpio == GPIO_TOGGLE_UP_PIN) {
         BOUNDARY_HIGH = current_position;
         high_boundary_set = 1;
-        printf("Upper boundary found: %d\n", BOUNDARY_HIGH);
+        printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
     } else {
         BOUNDARY_LOW = current_position;
         low_boundary_set = 1;
-        printf("Lower boundary found: %d\n", BOUNDARY_LOW);
+        printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
     }
     if (low_boundary_set && high_boundary_set) {
         normalize_boundaries();
@@ -125,7 +125,7 @@ void toggle_callback(uint gpio, uint32_t event) {
         // both detected, ignore
         reenable_interrupts_for(gpio, 0x0C);
     }
-    set_automation_status();
+    set_automation_state();
 }
 
 
@@ -134,7 +134,7 @@ void disable_automation() {
     if (automation_enabled == 1) {
         automation_enabled = 0;
     }
-    printf("automation status: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
 
@@ -142,5 +142,5 @@ void enable_automation() {
     if (automation_enabled == 0) {
         automation_enabled = 1;
     }
-    printf("automation status: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", automation_enabled);  // rbf
 }
