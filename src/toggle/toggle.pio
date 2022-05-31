@@ -1,0 +1,14 @@
+
+
+.program toggle
+
+; wait for a falling edge on either pin 18 or 19
+
+.define TOGGLE_IRQ 7                     ; the IRQ used to trigger a carrier burst
+
+loop:
+    wait 0 pin 0
+    irq 7
+
+
+

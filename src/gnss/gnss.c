@@ -147,3 +147,28 @@ int checksum_valid(char *string) {
 	return 0;
 }
 
+
+
+// int setup_gnss_dma(char *buffer) {
+//     const char src[] = "$GNZDA,2022,05,29,11,01,51,0,0\r\n,$GNGGA,4243.323,01100.0332,00,12\r\n";  // rbf
+//     char dst[256];  // rbf - this is an address passed in by main
+
+//     uint offset = pio_add_program(pio0, &pio_serialiser_program);
+//     pio_serialiser_program_init(pio0, 0, offset, 17, 18);
+
+//     int chan = dma_claim_unused_channel(true);
+//     dma_channel_config c = dma_channel_get_default_config(chan);
+//     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
+//     channel_config_set_write_increment(&c, true);
+//     channel_config_set_dreq(&c, DREQ_PIO0_RX0);
+
+//     dma_channel_configure(
+//         chan,          // Channel to be configured
+//         &c,            // The configuration we just created
+//         buffer,        // The initial write address             <-- this is a variable in main() whose address gets passed into the gnss subdir to solve the issue of global vars...
+//         src,           // The initial read address
+//         count_of(src), // Number of transfers; in this case each is 1 byte.   <-- 256??
+//         true           // Start immediately.
+//     );
+
+// }

@@ -8,7 +8,8 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
-#include "hardware/irq.h"
+#include "hardware/irq.h"  // needed??
+#include "hardware/dma.h"
 
 #endif
 
@@ -24,3 +25,5 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
+int setup_gnss_dma(char *buffer);
+

@@ -1,3 +1,10 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>  // needed for int8_t and int16_t
+#include <ctype.h>
+#include <string.h>
+#include "pico/stdlib.h"
+
 // uart config
 #define UART_ID uart1
 #define BAUD_RATE 9600
@@ -14,6 +21,4 @@
 // #define UP_PIN {num}
 // #define DOWN_PIN {num}
 
-
-int setup_uart();
-void on_uart_rx(double longitude, double latitude, int north, int east, int gnss_fix);
+void gpio_callback(uint gpio, uint32_t events);

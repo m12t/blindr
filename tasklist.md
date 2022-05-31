@@ -3,14 +3,28 @@
 
 
 CURRENT TASK:
-reading toggle switch via pio
+
+Toggle. Configure toggle on PIO and send an interrupt on falling edge (when activated)
+
+
+- gnss architecture:
+    - PIO listens on the uart pins and writes directly to a buffer via DMA. An IRQ is then generated for one of the main cores to parse the message and take further action.
+
+so to break it down into components:
+1. the PIO reads the UART and writes it to its RX FIFO
+2. the DMA then reads from the RX FIFO and writes it to an array in RAM
+
+
+toggle components:
+1. PIO are set for the up and down pins of the toggle switch
+2. they efficiently wait() for a change of state and trigger a IRQ to the main chip on a rising edge and end it with a falling edge
 
 
 TASKS:
 ______________________________________________________________________________
 1. work through handing the latitude and longitude vars which get used in on_uart_rx() within gnss.c but are local to
 the main() of blindr.c... and on_uart_rx() can't receive any parameters...
-    > handle uart within main() of blindr.c is the simplest solution.
+    > handle uart within main() of blindr.c is the simplest solution, but also bad design.
 1. set pico RTC using parsed ZDA datetime data
     ✅ be able to parse NMEA data and manipulate variables into the desired types
 
@@ -56,5 +70,6 @@ ______________________________________________________________________________
 ❌ write lat and long to flash... although you want it to search for new lat long on each power cycle of the uC.
 ✅ use lat long to get the UTC offset to be able to use the ZDA-given UTC time for RTC
     > daylight savings was *roughly* taken into account as well
+✅ validate that the toggle switch works with a simple python script
 
 

@@ -1,5 +1,6 @@
 #include "../blindr.h"  // for global defines
 #include "stepper.h"
+#include <stdio.h>  // rbf
 
 
 void stepper_init(void) {
@@ -30,6 +31,7 @@ void sleep_stepper() {
 void single_step(uint *current_position, uint direction) {
     // create a single rising edge to trigger a single step and
     // update the current position accordingly
+    printf("single step\n");  // rbf
     gpio_put(STEP_PIN, 0);
     sleep_us(30);  // give a healthy margin between signals
     gpio_put(STEP_PIN, 1);
@@ -46,7 +48,7 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     uint direction = toggle_pin == 14 ? 1 : 0;  // pseudocode... TODO: get the direction based on the toggle switch pulled high...
     gpio_put(DIRECTION_PIN, direction);
 
-    while ((gpio_get(toggle_pin)) &&
+    while ((gpio_get(toggle_pin) == 0) &&
            (*current_position < BOUNDARY_HIGH) &&
            (*current_position > 0)) {
         // the pin is still pulled high and the position is within the range, steep

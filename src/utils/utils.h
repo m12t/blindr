@@ -7,6 +7,6 @@
 
 #endif
 
-void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
+void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
                      int8_t hour, int8_t min, int8_t sec);
 

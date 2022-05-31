@@ -12,9 +12,10 @@ pico_sdk_init()
 add_subdirectory(./utils)
 add_subdirectory(./gnss)
 add_subdirectory(./stepper)
+add_subdirectory(./toggle)
 
 add_executable(blindr blindr.c)
-target_link_libraries(blindr utils gnss stepper)
+target_link_libraries(blindr utils gnss stepper toggle)
 
 pico_enable_stdio_usb(blindr 0)  # 0 before deployment - also remove all printf() statements
 pico_enable_stdio_uart(blindr 1) # 0 before deployment
