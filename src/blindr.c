@@ -34,6 +34,6 @@ int main(void) {
 void gpio_callback(uint gpio, uint32_t events) {
     gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL, false);  // disable further interrupts during execution to combat switch bounce
     step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
-    // busy_wait_ms(1000);
+    printf("done with callback\n");
     gpio_set_irq_enabled_with_callback(gpio, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);  // re-enable further interrupts during execution to combat switch bounce
 }

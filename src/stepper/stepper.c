@@ -38,11 +38,6 @@ void single_step(uint *current_position, uint direction) {
     printf("single step, pos: %d\n", *current_position);  // rbf
 }
 
-void wait_then_disable(uint toggle_pin) {
-    busy_wait_ms(5000);
-    if (gpio_get(toggle_pin) == 0)
-        printf("Disabling automation!\n");
-}
 
 int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pin) {
     // alternate to single step() where this function reads the toggle switch value
@@ -60,13 +55,13 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
             if (!printed) {
                 printed = 1;
                 printf("Fully closed up!\n");  // rbd
-                wait_then_disable(toggle_pin);
+                printf("Disabling automation!\n");
             }
         } else if (*current_position == 0 && direction == 0) {
             if (!printed) {
                 printed = 1;
                 printf("Fully closed down!\n");  // eventually sleep for a few seconds then deactivate automated operation
-                wait_then_disable(toggle_pin);
+                printf("Disabling automation!\n");
             }
         } else {
             printed = 0;
