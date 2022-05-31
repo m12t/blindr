@@ -21,4 +21,9 @@
 // #define UP_PIN {num}
 // #define DOWN_PIN {num}
 
-void gpio_callback(uint gpio, uint32_t events);
+
+void disable_interrupts_for(uint gpio, int event);
+void reenable_interrupts_for(uint gpio, int event);
+void toggle_callback(uint gpio, uint32_t event);
+void disable_automation();
+void enable_automation();

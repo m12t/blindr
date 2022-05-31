@@ -1,17 +1,19 @@
 #include "toggle.h"
 #include <stdio.h>  // rbf
 
-int setup_toggle(void *callback) {
-    printf("running toggle\n");
+int setup_toggle(void *toggle_callback) {
 
-    gpio_pull_up(18);
+    // initialize the toggle switch pins tied high and throwing the switch pulls them to ground
+    gpio_pull_up(18);  // change the pin number as needed
     gpio_pull_up(19);
 
-    gpio_set_irq_enabled_with_callback(18, GPIO_IRQ_EDGE_FALL, true, callback);
-    gpio_set_irq_enabled_with_callback(19, GPIO_IRQ_EDGE_FALL, true, callback);
+    // default to enabling listening for falling edges, and only listen to rising edges when
+    // a falling edge has occurred. This happens in `blindr.c`
+    gpio_set_irq_enabled_with_callback(18, GPIO_IRQ_EDGE_FALL, true, toggle_callback);
+    gpio_set_irq_enabled_with_callback(19, GPIO_IRQ_EDGE_FALL, true, toggle_callback);
+    gpio_set_irq_enabled_with_callback(18, GPIO_IRQ_EDGE_RISE, false, toggle_callback);
+    gpio_set_irq_enabled_with_callback(19, GPIO_IRQ_EDGE_RISE, false, toggle_callback);
 
-    // gpio_set_irq_enabled_with_callback(18, GPIO_IRQ_EDGE_RISE, true, {enable_automation_callback})  // re-enable automatioun
-    // gpio_set_irq_enabled_with_callback(19, GPIO_IRQ_EDGE_RISE, true, {enable_automation_callback})  // re-enable automatioun
 
     return 0;
 }

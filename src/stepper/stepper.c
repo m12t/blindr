@@ -46,29 +46,12 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     wake_stepper();
     uint direction = toggle_pin == 18 ? 0 : 1;  // change to whatever pin ends up being used...
     gpio_put(DIRECTION_PIN, direction);
-    int printed = 0;
     while ((gpio_get(toggle_pin) == 0) &&
-           (*current_position <= BOUNDARY_HIGH) &&
-           (*current_position >= 0)) {
+           (*current_position < BOUNDARY_HIGH) &&
+           (*current_position > 0)) {
         // the pin is still pulled high and the position is within the range, steep
-        if (*current_position == BOUNDARY_HIGH && direction == 1) {
-            if (!printed) {
-                printed = 1;
-                printf("Fully closed up!\n");  // rbd
-                printf("Disabling automation!\n");
-            }
-        } else if (*current_position == 0 && direction == 0) {
-            if (!printed) {
-                printed = 1;
-                printf("Fully closed down!\n");  // eventually sleep for a few seconds then deactivate automated operation
-                printf("Disabling automation!\n");
-            }
-        } else {
-            printed = 0;
-            single_step(current_position, direction);
-        }
+        single_step(current_position, direction);
     }
-
     sleep_stepper();
 }
 
