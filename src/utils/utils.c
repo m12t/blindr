@@ -1,5 +1,6 @@
 #include "../blindr.h"
 #include "utils.h"
+#include <math.h>
 
 
 void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
@@ -21,7 +22,12 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
     rtc_set_datetime(&dt);
 }
 
-int setup_pio() {
-    
-}
 
+int get_dotw(int16_t year, int8_t month, int8_t day, int8_t dotw,
+             int8_t hour, int8_t min, int8_t sec) {
+    // https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html
+    uint C = year / 100;  // Century: 1987 -> 19
+    uint Y = year - 100*C;  // 2 digit year: 1987 -> 87
+
+    return (uint)(day + floor(2.6*month - 0.2) - 2*C + Y + floor(Y/4) + floor(C/4)) % 7;
+}

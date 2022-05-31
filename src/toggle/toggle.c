@@ -1,7 +1,7 @@
 #include "toggle.h"
 #include <stdio.h>  // rbf
 
-int setup_toggle(void *toggle_callback) {
+int toggle_init(void *toggle_callback) {
 
     // initialize the toggle switch pins tied high and throwing the switch pulls them to ground
     gpio_pull_up(18);  // change the pin number as needed

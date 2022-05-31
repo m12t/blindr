@@ -9,12 +9,25 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"  // needed??
-#include "hardware/dma.h"
+
+// uart config
+#define UART_ID uart1
+#define UART_IRQ = UART1_IRQ;
+#define BAUD_RATE 115200
+#define DATA_BITS 8
+#define STOP_BITS 1
+#define PARITY UART_PARITY_NONE
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
+
+extern int8_t sec, min, hour, day, month, utc_offset;
+extern int16_t year;
+extern double latitude, longitude;  // use atof() on these. float *should* be sufficient
+extern int north, east, gnss_fix;
 
 #endif
 
 
-int gnss_main(void);
 void parse_buffer(char *buffer, char **sentences, int max_sentences);
 void parse_line(char *string, char **fields, int num_fields);
 int checksum_valid(char *string);
@@ -25,5 +38,6 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
-int setup_gnss_dma(char *buffer);
+void gnss_init(void);
+
 

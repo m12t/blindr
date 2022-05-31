@@ -5,18 +5,14 @@
 CURRENT TASK:
 
 
-
-- gnss architecture:
-    - PIO listens on the uart pins and writes directly to a buffer via DMA. An IRQ is then generated for one of the main cores to parse the message and take further action.
-
-so to break it down into components:
-1. the PIO reads the UART and writes it to its RX FIFO
-2. the DMA then reads from the RX FIFO and writes it to an array in RAM
-
-
-
 TASKS:
 ______________________________________________________________________________
+
+change of plans:
+- DON'T handle configuring the gnss module. config elsewhere and assume it has ZDA and GGA data.
+- only rely on the gnss to set the module on startup. This allows the gnss to be disconnected and used for other tasks.
+    a. be able to dismount the uart and irqs on gnss
+
 1. work through handing the latitude and longitude vars which get used in on_uart_rx() within gnss.c but are local to
 the main() of blindr.c... and on_uart_rx() can't receive any parameters...
     > handle uart within main() of blindr.c is the simplest solution, but also bad design.
@@ -71,5 +67,6 @@ ______________________________________________________________________________
     > see: logic_analyser.c example in pico-examples/pio
     >>> pio is overkill for toggle switch and stepper
 ❌ use PIO for controlling the stepper instead of bit banging the rising edge? >> no. GPIO is sufficient
-
+✅ now that GNSS uart is only used on startup, place the logic in the `gnss.c` file and access the global vars lat, long, north, east, utc_offset, etc. via externs in `gnss.h`
+✅ get gnss.c working to parse gnss data while the toggle functinoality runs simultaneously
 

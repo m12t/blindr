@@ -4,6 +4,7 @@
 
 
 void stepper_init(void) {
+    printf("INITing Stepper\n");
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
     gpio_init(DIRECTION_PIN);

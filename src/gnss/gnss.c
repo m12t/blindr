@@ -1,13 +1,13 @@
-#include "../blindr.h"  // for global defines
 #include "gnss.h"
 
+
+uint lat_long_set = 0;
 
 void parse_buffer(char *buffer, char **sentences, int max_sentences) {
     /*
     split out the buffer into individual NMEA sentences
     which are terminated by <cr><lf> aka `\r\n`
     */
-    printf("max sentences: %d\n", max_sentences);
     int i = 0;
     char *eol;  // end of line
     eol = strtok(buffer, "\n\r");
@@ -73,6 +73,7 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
         to_decimal_degrees(latitude, north);
         to_decimal_degrees(longitude, east);
     }
+    lat_long_set = 1;  // flag for whether lat long data are set
 }
 
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
@@ -148,27 +149,90 @@ int checksum_valid(char *string) {
 }
 
 
+// RX interrupt handler
+void on_uart_rx(void) {
+    size_t len = 256;
+    char buffer[len];  // make a buffer of size `len` for the raw message
+    char *sentences[16] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
+    uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
+    parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));  // split the monolithic buffer into discrete sentences
 
-// int setup_gnss_dma(char *buffer) {
-//     const char src[] = "$GNZDA,2022,05,29,11,01,51,0,0\r\n,$GNGGA,4243.323,01100.0332,00,12\r\n";  // rbf
-//     char dst[256];  // rbf - this is an address passed in by main
+    int i=0, valid=0, msg_type = 0, num_fields=0;
+	while (sentences[i]) {
+        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        num_fields = 0;     // reset each iteration
+		if (strstr(sentences[i], "GGA")) {
+			num_fields = 18;  // 1 more
+            msg_type = 1;
+            valid = 1;  // run the below. temporarily false for testing VTG
+		} else if (strstr(sentences[i], "ZDA")) {
+			num_fields = 10;  // 1 more
+            msg_type = 2;
+            valid = 1;  // run the below. temporarily false for testing VTG
+		} else {
+            msg_type = 0;  // not really necessary
+            valid = 0;
+        }
+        if (valid && checksum_valid(sentences[i])) {
+            char *fields[num_fields];
+            parse_line(sentences[i], fields, num_fields);
+            if (msg_type == 1) {
+                // always parse this as it has the `gnss_fix` flag
+                if (!lat_long_set) {
+                    parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
+                }
+                if (rtc_running()) {
+                    // the rtc was set and the lat long was set, shut down the uart
+                    gnss_deinit();
+                }
+            } else if (msg_type == 2 && gnss_fix) {
+                // only parse if there is a fix
+                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+                get_utc_offset(longitude, &utc_offset, month, day);
+                if (!rtc_running()) {
+                    set_rtc();
+                } else {
+                    if (lat_long_set) {
+                        gnss_deinit();
+                    }
+                }
+                // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);
+                // TODO: fix bug where utc time is less than the offset and the clock time is negative...
+            } else {}
+        }
+		i++;
+	}
+    printf("-----------------------\n");
+}
 
-//     uint offset = pio_add_program(pio0, &pio_serialiser_program);
-//     pio_serialiser_program_init(pio0, 0, offset, 17, 18);
+void gnss_init(void) {
+    stdio_init_all();
+    uart_init(UART_ID, BAUD_RATE);
 
-//     int chan = dma_claim_unused_channel(true);
-//     dma_channel_config c = dma_channel_get_default_config(chan);
-//     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
-//     channel_config_set_write_increment(&c, true);
-//     channel_config_set_dreq(&c, DREQ_PIO0_RX0);
+    // Set the TX and RX pins by using the function select on the GPIO
+    // See datasheet for more information on function select
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    // Set UART flow control CTS/RTS to `false`
+    uart_set_hw_flow(UART_ID, false, false);
+    // Set data format
+    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
+    // Turn on FIFO's - throughput is valued over latency.
+    uart_set_fifo_enabled(UART_ID, true);
+    // Set up a RX interrupt
+    // And set up and enable the interrupt handlers
+    irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
+    irq_set_enabled(UART_IRQ, true);
+    // Now enable the UART to send interrupts - RX only
+    uart_set_irq_enables(UART_ID, true, false);
+}
 
-//     dma_channel_configure(
-//         chan,          // Channel to be configured
-//         &c,            // The configuration we just created
-//         buffer,        // The initial write address             <-- this is a variable in main() whose address gets passed into the gnss subdir to solve the issue of global vars...
-//         src,           // The initial read address
-//         count_of(src), // Number of transfers; in this case each is 1 byte.   <-- 256??
-//         true           // Start immediately.
-//     );
 
-// }
+void gnss_deinit(void) {
+    printf("deinitializing uart!\n");
+    // deinit uart
+    uart_deinit(UART_ID);
+    // disable IRQ
+    irq_set_enabled(UART_IRQ, false);
+}
+

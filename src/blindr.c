@@ -5,9 +5,11 @@
 #include "toggle.h"
 #include "hardware/gpio.h"
 
+char buffer[256];  // NMEA message buffer
+char *sentences[16] = {NULL};
 uint low_boundary_set=0, high_boundary_set=0;
-int BOUNDARY_LOW=0, BOUNDARY_HIGH=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
-int8_t sec, min, hour, day, month, utf_offset;
+int BOUNDARY_LOW=0, BOUNDARY_HIGH=0, MIDPOINT=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
+int8_t sec, min, hour, day, month, utc_offset;
 int16_t year;
 double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
 int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
@@ -16,15 +18,18 @@ int automation_enabled=1;  // flag useful for whether or not to operate the blin
 int main(void) {
     // main program loop for blindr
 
-
     stdio_init_all();  // rbf - used for debugging
 
     // setup_uart();  // for connecting to GNSS module
-    // stepper_init();
-    setup_toggle(&toggle_callback);
+    stepper_init();
+    toggle_init(&toggle_callback);
+    gnss_init();
 
 
     while (1) {
+        printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
+        printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
+        printf("gnss_fix: %d\n", gnss_fix);  // rbf
     }
 }
 
@@ -50,14 +55,16 @@ void set_automation_state(void) {
 
 void normalize_boundaries() {
     // set low boundary to 0
-    printf("normalizing...\n");
-    printf("current pos before: %d\n", current_position);
+    printf("normalizing...\n");  // rbf
+    printf("current pos before: %d\n", current_position);  // rbf
     current_position += abs(BOUNDARY_LOW);
     BOUNDARY_HIGH += abs(BOUNDARY_LOW);
     BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
-    printf("new low boundary: %d\n", BOUNDARY_LOW);
-    printf("new high boundary: %d\n", BOUNDARY_HIGH);
-    printf("current pos after: %d\n", current_position);
+    MIDPOINT = (BOUNDARY_HIGH - BOUNDARY_LOW) / 2;
+    printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
+    printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
+    printf("current pos after: %d\n", current_position);  // rbf
+    printf("middy: %d\n", MIDPOINT);  // rbf
 
 }
 

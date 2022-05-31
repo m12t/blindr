@@ -4,5 +4,4 @@
 #include "hardware/irq.h"
 #include "../blindr.h"
 
-int setup_toggle(void *toggle_callback);
-void gpio_callback(uint gpio, uint32_t events);
+int toggle_init(void *toggle_callback);
