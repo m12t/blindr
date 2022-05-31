@@ -77,7 +77,7 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 }
 
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
-    *utc_offset = (int)(longitude / 15);
+    *utc_offset = (int)(longitude / 15);  // UTC time zones are split every 15 degrees on longitude
     // do the solar equations actually need daylight savings and offset??
     if ((month > 3 || (month == 3 && day >= 13)) && (month < 11 || (month == 11 && day <= 6))) {
         // a really hacky solution (not exactly on these dates every year)
@@ -190,14 +190,13 @@ void on_uart_rx(void) {
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
                 get_utc_offset(longitude, &utc_offset, month, day);
                 if (!rtc_running()) {
-                    set_rtc();
+                    set_onboard_rtc(year, month, day, dotw, hour, min, sec);
                 } else {
                     if (lat_long_set) {
                         gnss_deinit();
                     }
                 }
                 // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);
-                // TODO: fix bug where utc time is less than the offset and the clock time is negative...
             } else {}
         }
 		i++;

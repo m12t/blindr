@@ -23,11 +23,13 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
 }
 
 
-int get_dotw(int16_t year, int8_t month, int8_t day, int8_t dotw,
-             int8_t hour, int8_t min, int8_t sec) {
-    // https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html
-    uint C = year / 100;  // Century: 1987 -> 19
-    uint Y = year - 100*C;  // 2 digit year: 1987 -> 87
+int get_dotw(int16_t year, int8_t month, int8_t day) {
+    // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
+    return (date += month < 3 ? year-- : year - 2, 23*month/9 + date + 4 + year/4- year/100 + year/400)%7;
+}
 
-    return (uint)(day + floor(2.6*month - 0.2) - 2*C + Y + floor(Y/4) + floor(C/4)) % 7;
+void get_local_dt(int16_t year, int8_t month, int8_t day,
+                  int8_t hour, int8_t min, int8_t sec, uint utc_offset) {
+    // must call this before get_dotw()!
+
 }
