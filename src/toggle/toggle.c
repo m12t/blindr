@@ -1,8 +1,8 @@
 #include "toggle.h"
 #include <stdio.h>  // rbf
 
-int setup_toggle(gpio_irq_callback_t *callback) {
-    printf("runnign toggle\n");
+int setup_toggle(void *callback) {
+    printf("running toggle\n");
 
     gpio_pull_up(18);
     gpio_pull_up(19);

@@ -7,7 +7,7 @@
 
 
 const uint BOUNDARY_LOW = 0;
-extern uint BOUNDARY_HIGH, current_position;  // stepper positioning. midpoint and num_steps can be calculated
+uint BOUNDARY_HIGH = 100, current_position = 50;  // stepper positioning. midpoint and num_steps can be calculated
 int8_t sec, min, hour, day, month, utf_offset;
 int16_t year;
 double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
@@ -23,19 +23,17 @@ int main(void) {
     // stepper_init();
     setup_toggle(&gpio_callback);
 
-    while (1);  // rbf
 
-
-    // while (1) {
-    //     // main program loop
-    //     tight_loop_contents();
-    // }
+    while (1) {
+        // main program loop
+        // tight_loop_contents();
+    }
 }
 
 
 void gpio_callback(uint gpio, uint32_t events) {
     gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL, false);  // disable further interrupts during execution to combat switch bounce
-    printf("callback working! Event on gpio: %d\n", gpio);
-    busy_wait_ms(1000); 
+    step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
+    // busy_wait_ms(1000);
     gpio_set_irq_enabled_with_callback(gpio, GPIO_IRQ_EDGE_FALL, true, &gpio_callback);  // re-enable further interrupts during execution to combat switch bounce
 }

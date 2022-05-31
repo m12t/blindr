@@ -18,24 +18,24 @@ void stepper_init(void) {
 
 void wake_stepper() {
     gpio_put(SLEEP_PIN, 1);  // current is now flowing throught the stepper
-    sleep_ms(2);  // per instructions, leave >1ms after sleep before step input
+    busy_wait_ms(2);  // per instructions, leave >1ms after sleep before step input
 }
 
 
 void sleep_stepper() {
     gpio_put(SLEEP_PIN, 0);
-    sleep_ms(2);  // purely a safety margin
+    busy_wait_ms(2);  // purely a safety margin
 }
 
 
 void single_step(uint *current_position, uint direction) {
     // create a single rising edge to trigger a single step and
     // update the current position accordingly
-    printf("single step\n");  // rbf
     gpio_put(STEP_PIN, 0);
-    sleep_us(30);  // give a healthy margin between signals
+    busy_wait_ms(30);  // give a healthy margin between signals - busy wait needed during interrupt
     gpio_put(STEP_PIN, 1);
     *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
+    printf("single step, pos: %d\n", *current_position);  // rbf
 }
 
 
@@ -44,16 +44,28 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     // directly and also modifies the current position automatically.
 
     wake_stepper();
-
-    uint direction = toggle_pin == 14 ? 1 : 0;  // pseudocode... TODO: get the direction based on the toggle switch pulled high...
+    uint direction = toggle_pin == 18 ? 0 : 1;  // change to whatever pin ends up being used...
     gpio_put(DIRECTION_PIN, direction);
-
+    int printed = 0;
     while ((gpio_get(toggle_pin) == 0) &&
-           (*current_position < BOUNDARY_HIGH) &&
-           (*current_position > 0)) {
+           (*current_position <= BOUNDARY_HIGH) &&
+           (*current_position >= 0)) {
         // the pin is still pulled high and the position is within the range, steep
-        single_step(current_position, direction);
-    }   
+        if (*current_position == BOUNDARY_HIGH && direction == 1) {
+            if (!printed) {
+                printed = 1;
+                printf("Fully closed up!\n");  // eventually sleep for a few seconds then deactivate automated operation
+            }
+        } else if (*current_position == 0 && direction == 0) {
+            if (!printed) {
+                printed = 1;
+                printf("Fully closed down!\n");  // eventually sleep for a few seconds then deactivate automated operation
+            }
+        } else {
+            printed = 0;
+            single_step(current_position, direction);
+        }
+    }
 
     sleep_stepper();
 }
