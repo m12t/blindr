@@ -42,6 +42,7 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
 1. use PIO for controlling the stepper instead of bit banging the rising edge? no. GPIO is sufficient
 1. replace the GNSS uart interrupt architecture with PIO and DMA
 1. precisely calculate daylight savings times using day of the week (see: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html). This also means setting the DOTW in the datetime struct.
+1. since the reliability of the switch isn't perfect for triggering automation or not, assume automation is desired and perform an independent check before actually moving the blinds by evaluating current_position, and gpio_get(pin) value to see if the switch is flipper or not.
 
 
 COMPLETE:

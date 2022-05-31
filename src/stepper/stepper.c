@@ -44,7 +44,7 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     // directly and also modifies the current position automatically.
 
     wake_stepper();
-    uint direction = toggle_pin == 18 ? 0 : 1;  // change to whatever pin ends up being used...
+    uint direction = toggle_pin == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;  // change to whatever pin ends up being used...
     gpio_put(DIRECTION_PIN, direction);
     while ((gpio_get(toggle_pin) == 0) &&
            (*current_position <= BOUNDARY_HIGH) &&

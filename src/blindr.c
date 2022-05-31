@@ -32,8 +32,8 @@ int main(void) {
 }
 
 
-void disable_interrupts_for(uint gpio, int event) {
-    gpio_set_irq_enabled(gpio, event, false);  // disable further interrupts during execution to mitigate mechanical switch bounce
+void disable_all_interrupts_for(uint gpio) {
+    gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);  // disable further interrupts during execution to mitigate mechanical switch bounce
 }
 
 
@@ -41,9 +41,19 @@ void reenable_interrupts_for(uint gpio, int event) {
     gpio_set_irq_enabled_with_callback(gpio, event, true, &toggle_callback);
 }
 
+void set_automation_status(void) {
+    // read the state of the toggle gpio pins
+    busy_wait_ms(250);  // eliminate mechanical switch bounce
+    if (gpio_get(GPIO_TOGGLE_DOWN_PIN) == 0 || gpio_get(GPIO_TOGGLE_UP_PIN) == 0) {
+        disable_automation();
+    } else {
+        enable_automation();
+    }
+}
 
 void toggle_callback(uint gpio, uint32_t event) {
-    disable_interrupts_for(gpio, 0x0C);  // prevent further irqs while handling this one
+    disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
+    // busy_wait_ms(100);
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
@@ -53,21 +63,19 @@ void toggle_callback(uint gpio, uint32_t event) {
         // we need to know the current state to be able to configure the next
         // interrupt. if it's still 0, this means we never reset; listen for rising edge.
         // otherwise, we are reset (check that automation is enabled) and listen on another fall.
-        busy_wait_ms(50);
         if (gpio_get(gpio) == 0) {
             // the pin is still low, check that automation was disabled and reenable IRQs for
             // rising edge which will happen next
-            disable_automation();
+            // disable_automation();
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_RISE);
         } else {
             // the pin is high again, listen for another falling edge next
-            enable_automation();
+            // enable_automation();
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_FALL);
         }
     } else if (event == 0x08) {
         // Rising edge detected
-        enable_automation();
-        busy_wait_ms(50);  // to be safe
+        // enable_automation();
         if (gpio_get(gpio) == 1) {
             // the pin is still high, listen for a falling edge next
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_FALL);
@@ -80,26 +88,23 @@ void toggle_callback(uint gpio, uint32_t event) {
     } else {
         // both detected, ignore
         reenable_interrupts_for(gpio, 0x0C);
-        busy_wait_ms(50);
     }
+    set_automation_status();
 }
-
 
 
 void disable_automation() {
     // todo: after debugging, make this a one-liner:  automation_enabled = 0;
     if (automation_enabled == 1) {
-        printf("disabling automation...\n");  // rbf
         automation_enabled = 0;
     }
-    printf("automation status: %d\n", automation_enabled);
+    printf("automation status: %d\n", automation_enabled);  // rbf
 }
 
 
 void enable_automation() {
     if (automation_enabled == 0) {
-        printf("enabling automation...\n");  // rbf
         automation_enabled = 1;
     }
-    printf("automation status: %d\n", automation_enabled);
+    printf("automation status: %d\n", automation_enabled);  // rbf
 }
