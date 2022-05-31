@@ -5,14 +5,13 @@
 #include "toggle.h"
 #include "hardware/gpio.h"
 
-
-const uint BOUNDARY_LOW = 0;
-uint BOUNDARY_HIGH = 0, current_position = 0;  // stepper positioning. midpoint and num_steps can be calculated
+uint low_boundary_set=0, high_boundary_set=0;
+int BOUNDARY_LOW=0, BOUNDARY_HIGH=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
 int8_t sec, min, hour, day, month, utf_offset;
 int16_t year;
 double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
 int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
-int automation_enabled = 1;  // flag useful for whether or not to operate the blinds automatically.
+int automation_enabled=1;  // flag useful for whether or not to operate the blinds automatically.
 
 int main(void) {
     // main program loop for blindr
@@ -49,12 +48,40 @@ void set_automation_status(void) {
     }
 }
 
-void find_boundary() {
-    while (gpio_get(GPIO_TOGGLE_UP_PIN) == 0) {
-        single_step(&current_position, 1);
+void normalize_boundaries() {
+    // set low boundary to 0
+    printf("normalizing...\n");
+    printf("current pos before: %d\n", current_position);
+    current_position += abs(BOUNDARY_LOW);
+    BOUNDARY_HIGH += abs(BOUNDARY_LOW);
+    BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
+    printf("new low boundary: %d\n", BOUNDARY_LOW);
+    printf("new high boundary: %d\n", BOUNDARY_HIGH);
+    printf("current pos after: %d\n", current_position);
+
+}
+
+void find_boundary(uint gpio) {
+    // todo: find BOTH boundaries, then
+    // wait for down toggle
+    uint dir = gpio == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;
+    while (gpio_get(gpio) == 0) {
+        // while the switch is still pressed
+        single_step(&current_position, dir);
     }
-    BOUNDARY_HIGH = current_position;
-    printf("Upper boundary found: %d\n", BOUNDARY_HIGH);
+    // update the respective boundary
+    if (gpio == GPIO_TOGGLE_UP_PIN) {
+        BOUNDARY_HIGH = current_position;
+        high_boundary_set = 1;
+        printf("Upper boundary found: %d\n", BOUNDARY_HIGH);
+    } else {
+        BOUNDARY_LOW = current_position;
+        low_boundary_set = 1;
+        printf("Lower boundary found: %d\n", BOUNDARY_LOW);
+    }
+    if (low_boundary_set && high_boundary_set) {
+        normalize_boundaries();
+    }
 }
 
 void toggle_callback(uint gpio, uint32_t event) {
@@ -63,11 +90,8 @@ void toggle_callback(uint gpio, uint32_t event) {
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
-        if (BOUNDARY_HIGH == 0) {
-            if (gpio == GPIO_TOGGLE_UP_PIN) {
-                // upper boundary has not been set, do so now:
-                find_boundary();
-            }
+        if (!low_boundary_set || !high_boundary_set) {
+            find_boundary(gpio);
         } else {
             step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
         }
