@@ -47,10 +47,18 @@ int step_indefinitely(uint *current_position, uint BOUNDARY_HIGH, uint toggle_pi
     uint direction = toggle_pin == 18 ? 0 : 1;  // change to whatever pin ends up being used...
     gpio_put(DIRECTION_PIN, direction);
     while ((gpio_get(toggle_pin) == 0) &&
-           (*current_position < BOUNDARY_HIGH) &&
-           (*current_position > 0)) {
+           (*current_position <= BOUNDARY_HIGH) &&
+           (*current_position >= 0)) {
         // the pin is still pulled high and the position is within the range, steep
-        single_step(current_position, direction);
+        if ((*current_position == BOUNDARY_HIGH && direction == 1) ||
+            (*current_position == 0 && direction == 0)) {
+            // the current position is at a boundary and the direction is trying
+            // to move it out of bounds. Disallow and exit the loop.
+            break;
+        } else {
+            // a valid step can be taken, do so:
+            single_step(current_position, direction);
+        }
     }
     sleep_stepper();
 }

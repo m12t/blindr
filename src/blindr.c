@@ -64,7 +64,6 @@ void toggle_callback(uint gpio, uint32_t event) {
             enable_automation();
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_FALL);
         }
-        printf("handled falling edge IRQ\n");
     } else if (event == 0x08) {
         // Rising edge detected
         enable_automation();
@@ -78,12 +77,10 @@ void toggle_callback(uint gpio, uint32_t event) {
             // listen for another rising edge
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_RISE);
         }
-        printf("handled rising edge IRQ\n");
     } else {
         // both detected, ignore
-        printf("massive error!\n");
         reenable_interrupts_for(gpio, 0x0C);
-        busy_wait_ms(10);
+        busy_wait_ms(50);
     }
 }
 
