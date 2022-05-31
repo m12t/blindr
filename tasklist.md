@@ -4,7 +4,6 @@
 
 CURRENT TASK:
 
-Toggle. Configure toggle on PIO and send an interrupt on falling edge (when activated)
 
 
 - gnss architecture:
@@ -72,5 +71,6 @@ ______________________________________________________________________________
 ✅ use lat long to get the UTC offset to be able to use the ZDA-given UTC time for RTC
     > daylight savings was *roughly* taken into account as well
 ✅ validate that the toggle switch works with a simple python script
+✅ Toggle. send and handle an interrupt on falling edge
 
 

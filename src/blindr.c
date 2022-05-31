@@ -7,7 +7,7 @@
 
 
 const uint BOUNDARY_LOW = 0;
-uint BOUNDARY_HIGH = 100, current_position = 50;  // stepper positioning. midpoint and num_steps can be calculated
+uint BOUNDARY_HIGH = 0, current_position = 0;  // stepper positioning. midpoint and num_steps can be calculated
 int8_t sec, min, hour, day, month, utf_offset;
 int16_t year;
 double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
@@ -26,8 +26,6 @@ int main(void) {
 
 
     while (1) {
-        // main program loop
-        // tight_loop_contents();
     }
 }
 
@@ -51,13 +49,28 @@ void set_automation_status(void) {
     }
 }
 
+void find_boundary() {
+    while (gpio_get(GPIO_TOGGLE_UP_PIN) == 0) {
+        single_step(&current_position, 1);
+    }
+    BOUNDARY_HIGH = current_position;
+    printf("Upper boundary found: %d\n", BOUNDARY_HIGH);
+}
+
 void toggle_callback(uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
     // busy_wait_ms(100);
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
-        step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
+        if (BOUNDARY_HIGH == 0) {
+            if (gpio == GPIO_TOGGLE_UP_PIN) {
+                // upper boundary has not been set, do so now:
+                find_boundary();
+            }
+        } else {
+            step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
+        }
         // by now we're done with the falling action whether it's because
         // we reached a boundary of the blinds or because of a rising edge.
         // we need to know the current state to be able to configure the next
@@ -75,7 +88,6 @@ void toggle_callback(uint gpio, uint32_t event) {
         }
     } else if (event == 0x08) {
         // Rising edge detected
-        // enable_automation();
         if (gpio_get(gpio) == 1) {
             // the pin is still high, listen for a falling edge next
             reenable_interrupts_for(gpio, GPIO_IRQ_EDGE_FALL);
