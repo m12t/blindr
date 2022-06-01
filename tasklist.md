@@ -13,11 +13,6 @@ change of plans:
 - only rely on the gnss to set the module on startup. This allows the gnss to be disconnected and used for other tasks.
     a. be able to dismount the uart and irqs on gnss
 
-1. work through handing the latitude and longitude vars which get used in on_uart_rx() within gnss.c but are local to
-the main() of blindr.c... and on_uart_rx() can't receive any parameters...
-    > handle uart within main() of blindr.c is the simplest solution, but also bad design.
-1. set pico RTC using parsed ZDA datetime data
-    ✅ be able to parse NMEA data and manipulate variables into the desired types
 
 1. write out the code for stepper edge finding based on startup protocol.
     - on startup, use the three position toggle switch to move the blinds all the way to one extreme (eg. fully closed down) and then repeat this on the other edge. A count will be taken by the stepper to track the limits so it doesn't damage the blinds by over indexing when trying to maneuver them. incorporate a high sleep time between steps to move the blinds slowly so a precise edge can be found.
@@ -69,4 +64,8 @@ ______________________________________________________________________________
 ❌ use PIO for controlling the stepper instead of bit banging the rising edge? >> no. GPIO is sufficient
 ✅ now that GNSS uart is only used on startup, place the logic in the `gnss.c` file and access the global vars lat, long, north, east, utc_offset, etc. via externs in `gnss.h`
 ✅ get gnss.c working to parse gnss data while the toggle functinoality runs simultaneously
-
+✅ work through handing the latitude and longitude vars which get used in on_uart_rx() within gnss.c but are local to
+the main() of blindr.c... and on_uart_rx() can't receive any parameters...
+    > global vars and `extern` statements within `gnss.h`
+✅ set pico RTC using parsed ZDA datetime data
+    ✅ be able to parse NMEA data and manipulate variables into the desired types

@@ -197,7 +197,7 @@ void on_uart_rx(void) {
         }
 		i++;
 	}
-    printf("-----------------------\n");
+    printf("-----------------------\n");  // rbf
 }
 
 void gnss_init(void) {

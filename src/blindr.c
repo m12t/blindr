@@ -23,11 +23,12 @@ int automation_enabled=1;  // flag useful for whether or not to operate the blin
 void disable_all_interrupts_for(uint gpio);
 void reenable_interrupts_for(uint gpio, int event);
 void set_automation_state(void);
-void normalize_boundaries();
+void normalize_boundaries(void);
 void find_boundary(uint gpio);
 void toggle_callback(uint gpio, uint32_t event);
-void disable_automation();
-void enable_automation();
+void disable_automation(void);
+void enable_automation(void);
+void daily_loop(void);
 
 
 int main(void) {
@@ -68,7 +69,7 @@ void set_automation_state(void) {
     }
 }
 
-void normalize_boundaries() {
+void normalize_boundaries(void) {
     // set low boundary to 0
     printf("normalizing...\n");  // rbf
     printf("current pos before: %d\n", current_position);  // rbf
@@ -151,7 +152,7 @@ void toggle_callback(uint gpio, uint32_t event) {
 }
 
 
-void disable_automation() {
+void disable_automation(void) {
     // todo: after debugging, make this a one-liner:  automation_enabled = 0;
     // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 0;
@@ -159,7 +160,9 @@ void disable_automation() {
 }
 
 
-void enable_automation() {
+void enable_automation(void) {
     automation_enabled = 1;
     printf("automation state: %d\n", automation_enabled);  // rbf
 }
+
+void daily_loop(void);
