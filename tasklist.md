@@ -3,27 +3,18 @@
 
 
 CURRENT TASK:
-1. sort out the rate nest of #include s and #define s
+1. writing the main program loop of finding the next solar event and setting a timer on the rtc to service the event.
+    a. be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
+    b. build out the solar functions (sunrise/sunset,etc.)
+
 
 TASKS:
 ______________________________________________________________________________
 
-change of plans:
-- DON'T handle configuring the gnss module. config elsewhere and assume it has ZDA and GGA data.
-- only rely on the gnss to set the module on startup. This allows the gnss to be disconnected and used for other tasks.
-    a. be able to dismount the uart and irqs on gnss
-
-
-1. write out the code for stepper edge finding based on startup protocol.
-    - on startup, use the three position toggle switch to move the blinds all the way to one extreme (eg. fully closed down) and then repeat this on the other edge. A count will be taken by the stepper to track the limits so it doesn't damage the blinds by over indexing when trying to maneuver them. incorporate a high sleep time between steps to move the blinds slowly so a precise edge can be found.
-1. build out the solar functions (sunrise/sunset,etc.)
-1. be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
-1. be able to power on/off gnss module as needed.
+1. allow for a mode that runs without gnss/uart on startup (implement a timeout??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
 
 1. on startup, wait for satellite lock.
-1. the configurations can't be saved to flash on the GNSS chip, so code will need to be added to change the configs every startup.
-1. replace the GNSS uart interrupt architecture with PIO and DMA
-1. precisely calculate daylight savings times using day of the week (see: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html). This also means setting the DOTW in the datetime struct.
+
 
 
 COMPLETE:
@@ -69,3 +60,17 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
     > global vars and `extern` statements within `gnss.h`
 ✅ set pico RTC using parsed ZDA datetime data
     ✅ be able to parse NMEA data and manipulate variables into the desired types
+❌ replace the GNSS uart interrupt architecture with PIO and DMA
+    > since gnss is only used on startup
+❌ precisely calculate daylight savings times using day of the week (see: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html). This also means setting the DOTW in the datetime struct.
+    > don't use DST right now. it's not even used by the solar calculations -- believe it or not, the sun doesn't observe daylight savings!
+✅ write out the code for stepper edge finding based on startup protocol.
+    - on startup, use the three position toggle switch to move the blinds all the way to one extreme (eg. fully closed down) and then repeat this on the other edge. A count will be taken by the stepper to track the limits so it doesn't damage the blinds by over indexing when trying to maneuver them. incorporate a high sleep time between steps to move the blinds slowly so a precise edge can be found.
+❌ the configurations can't be saved to flash on the GNSS chip, so code will need to be added to change the configs every startup.
+    > just assume it was configured manually -- don't configure it.
+    ✅DON'T handle configuring the gnss module. config elsewhere and assume it has ZDA and GGA data.
+✅ only rely on the gnss to set the module on startup. This allows the gnss to be disconnected and used for other tasks.
+    a. be able to dismount the uart and irqs on gnss
+✅ sort out the rat's nest of #includes and #defines
+❌ be able to power on/off gnss module as needed.
+    > no longer needed, uart will be shut off and the unit can be disconnected.

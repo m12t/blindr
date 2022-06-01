@@ -165,4 +165,7 @@ void enable_automation(void) {
     printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
-void daily_loop(void);
+void daily_loop(void) {
+    // calculate the next event (sunrise/sunset)
+    // set an rtc alarm for that time
+}
