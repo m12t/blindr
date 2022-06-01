@@ -1,12 +1,12 @@
 #include "blindr.h"
 
 
+
 int main(void) {
     // main program loop for blindr
 
     stdio_init_all();  // rbf - used for debugging
 
-    // setup_uart();  // for connecting to GNSS module
     stepper_init();
     toggle_init(&toggle_callback);
     gnss_init();
@@ -138,4 +138,6 @@ void enable_automation(void) {
 void daily_loop(void) {
     // calculate the next event (sunrise/sunset)
     // set an rtc alarm for that time
+    // don't check for automation_enabled here... because it might be changed later.. calculate the next event
+    // and check for automatino just before executing it.
 }

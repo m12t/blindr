@@ -1,4 +1,5 @@
 #include "gnss.h"
+#include "../utils/utils.h"   // would be better to set the include path and just do utils/utils.h...
 
 
 uint lat_long_set = 0;

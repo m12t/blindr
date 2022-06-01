@@ -9,7 +9,6 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"     // needed??
-#include "../utils/utils.h"   // would be better to set the include path and just do utils/utils.h...
 
 // uart config
 #define UART_ID uart1
