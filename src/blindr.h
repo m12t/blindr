@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "stepper.h"
 #include "toggle.h"
+#include "solar.h"
 
 // main program global vars, some of which are accessed and modified elsewhere
 uint low_boundary_set=0, high_boundary_set=0;

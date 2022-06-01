@@ -1,4 +1,6 @@
 #include "utils.h"
+#include "hardware/rtc.h"    // for initializing and setting the RTC
+
 
 
 void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
@@ -27,12 +29,11 @@ int8_t get_dotw(int16_t year, int8_t month, int8_t day) {
     return (day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7;
 }
 
+
 int is_leapyear(int16_t year) {
     // if a year is divisibly by 4 and it is NOT divisible by 100
     // or if it is divisible by 100, it's also divisible by 400
-    if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))
-        return 1;
-    return 0;
+    return ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0);
 }
 
 uint last_day_of_month_on(int8_t month, int16_t year) {
