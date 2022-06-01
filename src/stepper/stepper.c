@@ -1,6 +1,4 @@
-#include "../blindr.h"  // for global defines
 #include "stepper.h"
-#include <stdio.h>  // rbf
 
 
 void stepper_init(void) {

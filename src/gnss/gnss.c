@@ -1,5 +1,4 @@
 #include "gnss.h"
-#include "utils.h"
 
 
 uint lat_long_set = 0;
@@ -177,7 +176,7 @@ void on_uart_rx(void) {
                     parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
                 }
                 if (rtc_running()) {
-                    // the rtc was set and the lat long was set, shut down the uart
+                    // rtc is running and lat and long are set. shut down UART.
                     gnss_deinit();
                 }
             } else if (msg_type == 2 && gnss_fix) {
@@ -189,6 +188,7 @@ void on_uart_rx(void) {
                     set_onboard_rtc(year, month, day, hour, min, sec);
                 } else {
                     if (lat_long_set) {
+                        // rtc is running and lat and long are set. shut down UART.
                         gnss_deinit();
                     }
                 }
@@ -216,18 +216,18 @@ void gnss_init(void) {
     uart_set_fifo_enabled(UART_ID, true);
     // Set up a RX interrupt
     // And set up and enable the interrupt handlers
-    irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
-    irq_set_enabled(UART_IRQ, true);
+    irq_set_exclusive_handler(UART1_IRQ, on_uart_rx);
+    irq_set_enabled(UART1_IRQ, true);
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(UART_ID, true, false);
 }
 
 
 void gnss_deinit(void) {
-    printf("deinitializing uart!\n");
+    printf("deinitializing uart!\n");  // rbf
     // deinit uart
     uart_deinit(UART_ID);
     // disable IRQ
-    irq_set_enabled(UART_IRQ, false);
+    irq_set_enabled(UART1_IRQ, false);
 }
 

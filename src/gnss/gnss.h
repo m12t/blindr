@@ -1,18 +1,18 @@
 #ifndef GNSS_H
 #define GNSS_H
 
-#include <stdio.h>
+#include <stdio.h>      // rbf
 #include <stdlib.h>
-#include <stdint.h>  // needed for int8_t and int16_t
-#include <ctype.h>
-#include <string.h>
+#include <stdint.h>     // for int8_t and int16_t
+#include <ctype.h>  // atoi, atof, i think...
+#include <string.h>  // definitely needed
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
-#include "hardware/irq.h"  // needed??
+#include "hardware/irq.h"     // needed??
+#include "../utils/utils.h"   // would be better to set the include path and just do utils/utils.h...
 
 // uart config
 #define UART_ID uart1
-#define UART_IRQ = UART1_IRQ;
 #define BAUD_RATE 115200
 #define DATA_BITS 8
 #define STOP_BITS 1
@@ -39,5 +39,6 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
 void gnss_init(void);
+void gnss_deinit(void);
 
 
