@@ -1,34 +1,4 @@
-#include "gnss.h"
-#include "utils.h"
-#include "stepper.h"
-#include "toggle.h"
-// #include "hardware/gpio.h"  // is there a cleaner way to include this??
-
-#include <stdio.h>  // rbf
-// #include <stdint.h>  // needed for int8_t and int16_t
-// #include <ctype.h>  // needed?
-// #include <string.h>  // needed?
-
-// main program global vars, some of which are accessed and modified elsewhere
-uint low_boundary_set=0, high_boundary_set=0;
-int BOUNDARY_LOW=0, BOUNDARY_HIGH=0, MIDPOINT=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
-int8_t sec, min, hour, day, month, utc_offset;
-int16_t year;
-double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
-int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
-int automation_enabled=1;  // flag useful for whether or not to operate the blinds automatically.
-
-
-// prototypes for this file
-void disable_all_interrupts_for(uint gpio);
-void reenable_interrupts_for(uint gpio, int event);
-void set_automation_state(void);
-void normalize_boundaries(void);
-void find_boundary(uint gpio);
-void toggle_callback(uint gpio, uint32_t event);
-void disable_automation(void);
-void enable_automation(void);
-void daily_loop(void);
+#include "blindr.h"
 
 
 int main(void) {
@@ -153,7 +123,6 @@ void toggle_callback(uint gpio, uint32_t event) {
 
 
 void disable_automation(void) {
-    // todo: after debugging, make this a one-liner:  automation_enabled = 0;
     // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 0;
     printf("automation state: %d\n", automation_enabled);  // rbf
@@ -161,6 +130,7 @@ void disable_automation(void) {
 
 
 void enable_automation(void) {
+    // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 1;
     printf("automation state: %d\n", automation_enabled);  // rbf
 }
