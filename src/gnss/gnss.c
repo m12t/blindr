@@ -1,4 +1,5 @@
 #include "gnss.h"
+#include "utils.h"
 
 
 uint lat_long_set = 0;
@@ -79,14 +80,8 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
     *utc_offset = (int)(longitude / 15);  // UTC time zones are split every 15 degrees on longitude
     // do the solar equations actually need daylight savings and offset??
-    if ((month > 3 || (month == 3 && day >= 13)) && (month < 11 || (month == 11 && day <= 6))) {
-        // a really hacky solution (not exactly on these dates every year)
-        // but then again without a large table daylight savings itself is hacky.
-        // for example, Arizona doesn't subscripe to daylight savings... so make a 
-        // coordinate geobox around AZ? surely not...
-        *utc_offset += 1;
-        printf("DST found!\n");  // rbf
-    }
+    // ignore daylight savings for now, a check will happen daily using the onboard RTC (no GNSS)
+    // and will add/subtract and hour every daylight savings.
 }
 
 void parse_line(char *string, char **fields, int num_fields) {
@@ -189,8 +184,9 @@ void on_uart_rx(void) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
                 get_utc_offset(longitude, &utc_offset, month, day);
+                localize_datetime(&year, &month, &day, &hour, utc_offset);
                 if (!rtc_running()) {
-                    set_onboard_rtc(year, month, day, dotw, hour, min, sec);
+                    set_onboard_rtc(year, month, day, hour, min, sec);
                 } else {
                     if (lat_long_set) {
                         gnss_deinit();

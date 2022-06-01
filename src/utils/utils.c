@@ -3,10 +3,11 @@
 #include <math.h>
 
 
-void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
+void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
                      int8_t hour, int8_t min, int8_t sec) {
     /* receive datetime data and set the RTC to the current time */
 
+    int8_t dotw = get_dotw(year, month, day);  // note: this happens *after* utc_offset shifts and any corrections.
     // construct the datetime_t struct and populte it data
     datetime_t dt = {
         .year = year,
@@ -23,7 +24,7 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t dotw,
 }
 
 
-int get_dotw(int16_t year, int8_t month, int8_t day) {
+int8_t get_dotw(int16_t year, int8_t month, int8_t day) {
     // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
     return (day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7;
 }
@@ -70,10 +71,10 @@ int last_day_of_month_on(uint8_t month, int16_t year) {
 }
 
 void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, uint utc_offset) {
-    *hour = 24 - abs(hour + utc_offset);
-    if (day == 1) {
+    *hour = 24 - abs(*hour + utc_offset);
+    if (*day == 1) {
         // it's the first of the month, yesterday was the last of the previous month
-        if (month == 1) {
+        if (*month == 1) {
             // it's January 1st and yesterday was a differrent year... we need to go back a year
             *year -= 1;
             *month = 12;
@@ -82,17 +83,17 @@ void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour,
             *month -= 1;
         }
         // need to go back a month
-        *day = last_day_of_month_on(month, year);
+        *day = last_day_of_month_on(*month, *year);
     } else {
         // day is a regular month day, simply subtract 1
         *day -= 1;
     }
-    *hour = 24 - (hour + utc_offset);
+    *hour = 24 - (*hour + utc_offset);
 }
 
 void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, uint utc_offset) {
-    if (day == last_day_of_month_on(month, year)) {
-        if (month == 12) {
+    if (*day == last_day_of_month_on(*month, *year)) {
+        if (*month == 12) {
             *year += 1;
             *month = 1;
             *day = 1;
@@ -104,10 +105,10 @@ void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, 
         // day is a regular month day, simply subtract 1
         *day += 1;
     }
-    *hour = (hour + utc_offset) - 24  // `(hour + utc_offset) % 24` would also work
+    *hour = (*hour + utc_offset) - 24;  // `(hour + utc_offset) % 24` would also work
 }
 
-void get_local_dt(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, uint utc_offset) {
+void localize_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, uint utc_offset) {
     // must call this before get_dotw()!
     // if adding the utc offset results in a different day, change accordingly
     if (hour + utc_offset < 0) {
