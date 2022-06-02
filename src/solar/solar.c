@@ -1,50 +1,20 @@
-#include <stdio.h>
-#include <math.h>
-#include <stdint.h>
+#include "solar.h"
 
-// this were translated from the code running at:
+// the below was translated from the code running at:
 // https://gml.noaa.gov/grad/solcalc/
 
 double latitude=44.869772, longitude=-93.369192;
 int16_t year = 2022;
 int8_t day=1, month=6;
-int utc_offset = -5;
-
-
-// prototypes:
-double calculate_solar_event(int16_t year, int8_t month, int8_t day,
-                             int8_t hour, int8_t min, int8_t sec, int utc_offset,
-                             double latitude, double longitude);
-double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone);
-double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude);
-double getJD(int16_t year, int8_t month, int8_t day);
-double calcHourAngleSunrise(double lat, double solarDec);
-double calcEquationOfTime(double t);
-double calcSunDeclination(double t);
-double calcSunRtAscension(double t);
-double calcObliquityCorrection(double t);
-double calcMeanObliquityOfEcliptic(double t);
-double calcSunApparentLong(double t);
-double calcSunTrueLong(double t);
-double calcSunEqOfCenter(double t);
-double calcEccentricityEarthOrbit(double t);
-double calcGeomMeanAnomalySun(double t);
-double calcGeomMeanLongSun(double t);
-double degToRad(double angleDeg);
-double radToDeg(double angleRad);
-double calcDoyFromJD(double jd);
-double calcDateFromJD(double jd);
-double calcTimeJulianCent(double jd);
-
-
+int utc_offset = -6;
 
 
 double radToDeg(double angleRad) {
-	return (180.0 * angleRad / M_PI);
+	return (180.0 * angleRad / PI);
 }
 
 double degToRad(double angleDeg) {
-	return (M_PI * angleDeg / 180.0);
+	return (PI * angleDeg / 180.0);
 }
 
 double calcGeomMeanLongSun(double t) {
