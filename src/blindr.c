@@ -21,6 +21,7 @@ int main(void) {
     }
 }
 
+
 void set_next_alarm(void) {
     rtc_get_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -88,20 +89,29 @@ void set_next_alarm(void) {
         }
     }
 
-    datetime_t next_alarm = {
-        .year  = next_year,
-        .month = next_month,
-        .day   = next_day,
-        .dotw  = next_dotw,
-        .hour  = next_hour,
-        .min   = next_min,
-        .sec   = 00
-    };
+    // datetime_t next_alarm = {
+    //     .year  = next_year,
+    //     .month = next_month,
+    //     .day   = next_day,
+    //     .dotw  = next_dotw,
+    //     .hour  = next_hour,
+    //     .min   = next_min,
+    //     .sec   = 00
+    // };
 
-    printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);
+    datetime_t next_alarm = {  // for testing only
+        .year  = now.year,
+        .month = now.month,
+        .day   = now.day,
+        .dotw  = now.dotw,
+        .hour  = now.hour,
+        .min   = now.min,
+        .sec   = now.sec + 15
+    };
+    
+    // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
     rtc_set_alarm(&next_alarm, &set_next_alarm);
 }
-
 
 
 void disable_all_interrupts_for(uint gpio) {
@@ -113,6 +123,7 @@ void reenable_interrupts_for(uint gpio, int event) {
     gpio_set_irq_enabled_with_callback(gpio, event, true, &toggle_callback);
 }
 
+
 void set_automation_state(void) {
     // read the state of the toggle gpio pins
     busy_wait_ms(250);  // eliminate mechanical switch bounce
@@ -122,6 +133,7 @@ void set_automation_state(void) {
         enable_automation();
     }
 }
+
 
 void normalize_boundaries(void) {
     // set low boundary to 0
@@ -137,6 +149,7 @@ void normalize_boundaries(void) {
     printf("middy: %d\n", MIDPOINT);  // rbf
 
 }
+
 
 void find_boundary(uint gpio) {
     // todo: find BOTH boundaries, then
@@ -160,6 +173,7 @@ void find_boundary(uint gpio) {
         normalize_boundaries();
     }
 }
+
 
 void toggle_callback(uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
@@ -218,6 +232,7 @@ void enable_automation(void) {
     automation_enabled = 1;
     printf("automation state: %d\n", automation_enabled);  // rbf
 }
+
 
 void daily_loop(void) {
     // calculate the next event (sunrise/sunset)

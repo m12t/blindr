@@ -1,24 +1,21 @@
 ❌
 ✅
 
-
 CURRENT TASK:
-1. writing the main program loop of finding the next solar event and setting a timer on the rtc to service the event.
-    a. be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
-    b. build out the solar functions (sunrise/sunset,etc.)
+1. test the alarm functionality to be able to actually trigger things
 
 
-TASKS:
-______________________________________________________________________________
 
+REMAINING TASKS:
+------------------------------------------------------------------------------
 1. allow for a mode that runs without gnss/uart on startup (implement a timeout??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
 
-1. on startup, wait for satellite lock.
-
 1. bug where if `down` is the first toggle input, no `up` input is allowed.
+1. perform integration testing with the stepper ... install the components.
 
-COMPLETE:
-______________________________________________________________________________
+
+COMPLETE TASKS:
+------------------------------------------------------------------------------
 ✅ get stepper motor turning
 ✅ read data from gnss module
 ✅ parse gnss data
@@ -74,3 +71,8 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
 ✅ sort out the rat's nest of #includes and #defines
 ❌ be able to power on/off gnss module as needed.
     > no longer needed, uart will be shut off and the unit can be disconnected.
+✅ build out alarm logic for solar events
+✅ writing the main program loop of finding the next solar event and setting a timer on the rtc to service the event.
+    ✅ be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
+    ✅ build out the solar functions (sunrise/sunset,etc.)
+✅ on startup, wait for satellite lock. -> gnss_fix=1

@@ -79,8 +79,8 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 
 void get_utc_offset(double longitude, int8_t *utc_offset) {
     *utc_offset = longitude / 15;
-    printf("longitude:  %f\n", longitude);  // rbf
-    printf("utc offset: %d\n", *utc_offset); // rbf
+    // printf("longitude:  %f\n", longitude);  // rbf
+    // printf("utc offset: %d\n", *utc_offset); // rbf
 }
 
 void parse_line(char *string, char **fields, int num_fields) {
@@ -153,7 +153,7 @@ void on_uart_rx(void) {
 
     int i=0, valid=0, msg_type = 0, num_fields=0;
 	while (sentences[i]) {
-        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
@@ -199,7 +199,7 @@ void on_uart_rx(void) {
         }
 		i++;
 	}
-    printf("-----------------------\n");  // rbf
+    // printf("-----------------------\n");  // rbf
 }
 
 void gnss_init(void) {
@@ -226,7 +226,7 @@ void gnss_init(void) {
 
 
 void gnss_deinit(void) {
-    printf("deinitializing uart!\n");  // rbf
+    // printf("deinitializing uart!\n");  // rbf
     // deinit uart
     uart_deinit(UART_ID);
     // disable IRQ
