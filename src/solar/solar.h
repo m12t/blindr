@@ -9,9 +9,10 @@
 #endif
 
 // prototypes:
-double calculate_solar_event(int16_t year, int8_t month, int8_t day,
-                             int8_t hour, int8_t min, int8_t sec, int utc_offset,
-                             double latitude, double longitude);
+void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
+                            int8_t *set_hour, int8_t *set_minute,
+                            int16_t year, int8_t month, int8_t day,
+                            int utc_offset, double latitude, double longitude);
 double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone);
 double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude);
 double getJD(int16_t year, int8_t month, int8_t day);

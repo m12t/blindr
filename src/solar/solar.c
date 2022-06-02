@@ -55,7 +55,6 @@ double calcSunTrueLong(double t) {
 	return O;		// in degrees
 }
 
-
 double calcSunApparentLong(double t) {
 	double o = calcSunTrueLong(t);
 	double omega = 125.04 - 1934.136 * t;
@@ -128,7 +127,6 @@ double calcTimeJulianCent(double jd) {
 	return T;
 }
 
-
 double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude) {
 	double t = calcTimeJulianCent(JD);
 	double eqTime = calcEquationOfTime(t);
@@ -149,10 +147,9 @@ double calcHourAngleSunrise(double lat, double solarDec) {
 	return HA;		// in radians (for sunset, use -HA)
 }
 
-// rise = 1 for sunrise, 0 for sunset
 
 double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone) {
-
+    // rise = 1 for sunrise, 0 for sunset
 	double timeUTC = calcSunriseSetUTC(rise, JD, latitude, longitude);
 	double newTimeUTC = calcSunriseSetUTC(rise, JD + timeUTC/1440.0, latitude, longitude); 
     double timeLocal;
@@ -169,26 +166,24 @@ double calcSunriseSet(double rise, double JD, double latitude, double longitude,
 		}
 
 	} else { // no sunrise/set found
-        return -1.0;
+        return 0.0;
     }
     return timeLocal;
 }
 
-int main() {
+void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
+                            int8_t *set_hour, int8_t *set_minute,
+                            int16_t year, int8_t month, int8_t day,
+                            int utc_offset, double latitude, double longitude) {
     double jday = getJD(year, month, day);
-    // printf("JDAY: %f\n", jday);
+    printf("JDAY: %f\n", jday);      // rbf
 	double rise = calcSunriseSet(1, jday, latitude, longitude, utc_offset);
 	double set  = calcSunriseSet(0, jday, latitude, longitude, utc_offset);
+    printf("raw rise: %f\n", rise);  // rbf
+    printf("raw set: %f\n", set);    // rbf
 
-    // printf("raw rise: %f\n", rise);
-    // printf("raw set: %f\n", set);
-
-
-    int8_t rise_hour = floor(rise / 60);
-    int8_t rise_min = rise - 60*rise_hour;
-    int8_t set_hour = floor(set / 60);
-    int8_t set_min = set - 60*set_hour;
-
-    printf("sunrise on %d/%d/%d: %d:%d:00\n", month, day, year, rise_hour, rise_min);
-    printf("sunset  on %d/%d/%d: %d:%d:00\n", month, day, year, set_hour, set_min);
+    *rise_hour = floor(rise / 60);
+    *rise_minute = rise - 60*rise_hour;
+    *set_hour = floor(set / 60);
+    *set_minute = set - 60*set_hour;
 }
