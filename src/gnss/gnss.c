@@ -77,11 +77,10 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     lat_long_set = 1;  // flag for whether lat long data are set
 }
 
-void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day) {
-    *utc_offset = (int)(longitude / 15);  // UTC time zones are split every 15 degrees on longitude
-    // do the solar equations actually need daylight savings and offset??
-    // ignore daylight savings for now, a check will happen daily using the onboard RTC (no GNSS)
-    // and will add/subtract and hour every daylight savings.
+void get_utc_offset(double longitude, int8_t *utc_offset) {
+    *utc_offset = longitude / 15;
+    printf("longitude:  %f\n", longitude);  // rbf
+    printf("utc offset: %d\n", *utc_offset); // rbf
 }
 
 void parse_line(char *string, char **fields, int num_fields) {
@@ -183,14 +182,16 @@ void on_uart_rx(void) {
             } else if (msg_type == 2 && gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                get_utc_offset(longitude, &utc_offset, month, day);
-                localize_datetime(&year, &month, &day, &hour, utc_offset);
-                if (!rtc_running()) {
-                    set_onboard_rtc(year, month, day, hour, min, sec);
-                } else {
-                    if (lat_long_set) {
-                        // rtc is running and lat and long are set. shut down UART.
-                        gnss_deinit();
+                if (longitude) {
+                    get_utc_offset(longitude, &utc_offset);
+                    localize_datetime(&year, &month, &day, &hour, utc_offset);
+                    if (!rtc_running()) {
+                        set_onboard_rtc(year, month, day, hour, min, sec);
+                    } else {
+                        if (lat_long_set) {
+                            // rtc is running and lat and long are set. shut down UART.
+                            gnss_deinit();
+                        }
                     }
                 }
                 // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);

@@ -9,6 +9,7 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"     // needed??
+#include "hardware/rtc.h"
 
 // uart config
 #define UART_ID uart1
@@ -36,7 +37,7 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
                int8_t *hour, int8_t *min, int8_t *sec);
 void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
-void get_utc_offset(double longitude, uint8_t *utc_offset, int8_t month, int8_t day);
+void get_utc_offset(double longitude, int8_t *utc_offset);
 void gnss_init(void);
 void gnss_deinit(void);
 

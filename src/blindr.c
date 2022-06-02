@@ -11,11 +11,10 @@ int main(void) {
     toggle_init(&toggle_callback);
     gnss_init();
 
-
     while (1) {
-        printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
-        printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
-        printf("gnss_fix: %d\n", gnss_fix);  // rbf
+        // printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
+        // printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
+        // printf("gnss_fix: %d\n", gnss_fix);  // rbf
     }
 }
 

@@ -7,6 +7,7 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
                      int8_t hour, int8_t min, int8_t sec) {
     /* receive datetime data and set the RTC to the current time */
     printf("setting onboard rtc...\n");  // rbf
+    printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
     int8_t dotw = get_dotw(year, month, day);  // note: this happens *after* utc_offset shifts and any corrections.
     // construct the datetime_t struct and populte it data
     datetime_t dt = {
@@ -70,6 +71,7 @@ uint last_day_of_month_on(int8_t month, int16_t year) {
 }
 
 void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
+    printf("today is yesterday\n");
     *hour = 24 - abs(*hour + utc_offset);
     if (*day == 1) {
         // it's the first of the month, yesterday was the last of the previous month
@@ -88,6 +90,7 @@ void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour,
         *day -= 1;
     }
     *hour = 24 - (*hour + utc_offset);
+    printf("new hour: %d\n", *hour);  // rbf
 }
 
 void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
@@ -110,6 +113,7 @@ void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, 
 void localize_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
     // must call this before get_dotw()!
     // if adding the utc offset results in a different day, change accordingly
+    printf("hour before: %d\n", *hour);
     if (*hour + utc_offset < 0) {
         today_is_yesterday(year, month, day, hour, utc_offset);  // these are already pointers, no need to use `*` again.
     } else if (*hour + utc_offset > 24) {

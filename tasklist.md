@@ -15,6 +15,7 @@ ______________________________________________________________________________
 
 1. on startup, wait for satellite lock.
 
+1. bug where if `down` is the first toggle input, no `up` input is allowed.
 
 COMPLETE:
 ______________________________________________________________________________
