@@ -2,13 +2,12 @@
 ✅
 
 CURRENT TASK:
-1. test the alarm functionality to be able to actually trigger things
+
 
 
 
 REMAINING TASKS:
 ------------------------------------------------------------------------------
-1. allow for a mode that runs without gnss/uart on startup (implement a timeout??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
 
 1. perform integration testing with the stepper ... install the components.
 
@@ -19,7 +18,7 @@ POTENTIAL FUTURE VERISON FEATURES:
 1. add the ability to power on/off gnss module and send configuratioins to it
     > wake it every week or so to ensure the onboard RTC stays accurate.
 1. complicated blind openings like imperceptibly slowly opening and closing throughout the day, etc.
-
+1. allow for a mode that runs without gnss/uart on startup (implement a timeout??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
 
 COMPLETE TASKS:
 ------------------------------------------------------------------------------
@@ -86,3 +85,4 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
 ✅ bug where if `down` is the first toggle input, no `up` input is allowed.
     > was switch bounce triggering the function to run at set the boundary to 0 since the switch wouldn't stay down
     long enough to actually take steps. A sleep at the top of the function followed by another test for the pin's state eliminated this issue.
+✅ test the alarm functionality to be able to actually trigger things

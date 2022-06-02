@@ -3,8 +3,8 @@
 
 #include "hardware/gpio.h"
 
-#define GPIO_TOGGLE_DOWN_PIN 18
-#define GPIO_TOGGLE_UP_PIN 19
+#define GPIO_TOGGLE_UP_PIN 18
+#define GPIO_TOGGLE_DOWN_PIN 19
 
 #endif
 

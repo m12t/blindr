@@ -30,11 +30,15 @@ void sleep_stepper() {
 void single_step(int *current_position, uint direction, uint sleep_time) {
     // create a single rising edge to trigger a single step and
     // update the current position accordingly
-    gpio_put(STEP_PIN, 0);
-    busy_wait_ms(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
-    gpio_put(STEP_PIN, 1);
-    *current_position += 2*direction - 1;  // map [0, 1] to [-1, 1]
-    printf("single step, pos: %d\n", *current_position);  // rbf
+    if (direction == 0 || direction == 1) {
+        gpio_put(DIRECTION_PIN, direction);
+        // it's a valid direction, take a step
+        gpio_put(STEP_PIN, 0);
+        busy_wait_us(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
+        gpio_put(STEP_PIN, 1);
+        *current_position += -(2*direction - 1);  // map [0, 1] to [-1, 1] and flip the sign since 0 is up
+        printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
+    }
 }
 
 
@@ -43,20 +47,19 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
     // directly and also modifies the current position automatically.
 
     wake_stepper();
-    uint direction = toggle_pin == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;  // change to whatever pin ends up being used...
-    gpio_put(DIRECTION_PIN, direction);
+    uint direction = toggle_pin == GPIO_TOGGLE_UP_PIN ? 0 : 1;  // change to whatever pin ends up being used...
     while ((gpio_get(toggle_pin) == 0) &&
            (*current_position <= BOUNDARY_HIGH) &&
            (*current_position >= 0)) {
         // the pin is still pulled high and the position is within the range, steep
-        if ((*current_position >= BOUNDARY_HIGH && direction == 1) ||
-            (*current_position <= 0 && direction == 0)) {
+        if ((*current_position >= BOUNDARY_HIGH && direction == 0) ||
+            (*current_position <= 0 && direction == 1)) {
             // the current position is at a boundary and the direction is trying
             // to move it out of bounds. Disallow and exit the loop.
             break;
         } else {
             // a valid step can be taken, do so:
-            single_step(current_position, direction, 30);
+            single_step(current_position, direction, 150);
         }
     }
     sleep_stepper();
@@ -81,9 +84,8 @@ int step_to_position(int *current_position, uint desired_position, uint BOUNDARY
     uint direction;
 
     while (*current_position != desired_position) {
-        direction = *current_position > desired_position ? 0 : 1;  // change this to whatever ends up being up and down on the blinds
-        gpio_put(DIRECTION_PIN, direction);
-        single_step(current_position, direction, 30);
+        direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
+        single_step(current_position, direction, 500);
     }
 
     sleep_stepper();

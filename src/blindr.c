@@ -145,19 +145,24 @@ void normalize_boundaries(void) {
 void find_boundary(uint gpio) {
     // todo: find BOTH boundaries, then
     // wait for down toggle
+    busy_wait_ms(100);  // combar switch bounce
     int stepped = 0;
-    uint dir = gpio == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;
+    printf("gpio: %d\n", gpio);
+    uint dir = gpio == GPIO_TOGGLE_UP_PIN ? 0 : 1;
+    printf("dir: %d\n", dir);
+    wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir, 30);
-        stepped++;
+        single_step(&current_position, dir, 250);
+        stepped = 1;
     }
+    sleep_stepper();
     // update the respective boundary
-    if (stepped && gpio == GPIO_TOGGLE_UP_PIN) {
+    if (stepped && dir == 0) {
         BOUNDARY_HIGH = current_position;
         high_boundary_set = 1;
         printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
-    } else if (stepped && gpio == GPIO_TOGGLE_DOWN_PIN) {
+    } else if (stepped && dir == 1) {
         BOUNDARY_LOW = current_position;
         low_boundary_set = 1;
         printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
