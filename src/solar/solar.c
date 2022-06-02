@@ -17,10 +17,7 @@ double calculate_solar_event(int16_t year, int8_t month, int8_t day,
                              double latitude, double longitude);
 double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone);
 double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude);
-double calcSolNoon(double jd, double longitude, double timezone);
-double calcRefraction(double elev);
 double getJD(int16_t year, int8_t month, int8_t day);
-double isNumber(double inputVal);
 double calcHourAngleSunrise(double lat, double solarDec);
 double calcEquationOfTime(double t);
 double calcSunDeclination(double t);
@@ -28,8 +25,6 @@ double calcSunRtAscension(double t);
 double calcObliquityCorrection(double t);
 double calcMeanObliquityOfEcliptic(double t);
 double calcSunApparentLong(double t);
-double calcSunRadVector(double t);
-double calcSunTrueAnomaly(double t);
 double calcSunTrueLong(double t);
 double calcSunEqOfCenter(double t);
 double calcEccentricityEarthOrbit(double t);
@@ -39,21 +34,7 @@ double degToRad(double angleDeg);
 double radToDeg(double angleRad);
 double calcDoyFromJD(double jd);
 double calcDateFromJD(double jd);
-double isLeapYear(int16_t yr);
-double calcJDFromJulianCent(double t);
 double calcTimeJulianCent(double jd);
-
-
-
-
-double calcJDFromJulianCent(double t) {
-	double JD = t * 36525.0 + 2451545.0;
-	return JD;
-}
-
-double isLeapYear(int16_t yr) {
-	return ((yr % 4 == 0 && yr % 100 != 0) || yr % 400 == 0);
-}
 
 
 
@@ -104,19 +85,6 @@ double calcSunTrueLong(double t) {
 	return O;		// in degrees
 }
 
-double calcSunTrueAnomaly(double t) {
-	double m = calcGeomMeanAnomalySun(t);
-	double c = calcSunEqOfCenter(t);
-	double v = m + c;
-	return v;		// in degrees
-}
-
-double calcSunRadVector(double t) {
-	double v = calcSunTrueAnomaly(t);
-	double e = calcEccentricityEarthOrbit(t);
-	double R = (1.000001018 * (1 - e * e)) / (1 + e * cos(degToRad(v)));
-	return R;		// in AUs
-}
 
 double calcSunApparentLong(double t) {
 	double o = calcSunTrueLong(t);
@@ -238,12 +206,12 @@ double calcSunriseSet(double rise, double JD, double latitude, double longitude,
 
 int main() {
     double jday = getJD(year, month, day);
-    printf("JDAY: %f\n", jday);
+    // printf("JDAY: %f\n", jday);
 	double rise = calcSunriseSet(1, jday, latitude, longitude, utc_offset);
 	double set  = calcSunriseSet(0, jday, latitude, longitude, utc_offset);
 
-    printf("raw rise: %f\n", rise);
-    printf("raw set: %f\n", set);
+    // printf("raw rise: %f\n", rise);
+    // printf("raw set: %f\n", set);
 
 
     int8_t rise_hour = floor(rise / 60);
