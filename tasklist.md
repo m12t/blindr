@@ -10,7 +10,6 @@ REMAINING TASKS:
 ------------------------------------------------------------------------------
 1. allow for a mode that runs without gnss/uart on startup (implement a timeout??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
 
-1. bug where if `down` is the first toggle input, no `up` input is allowed.
 1. perform integration testing with the stepper ... install the components.
 
 
@@ -84,3 +83,6 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
     ✅ be able to set alarms? or whatever's the best method for sleeping between solar events (though still must listed for toggle switch input...)
     ✅ build out the solar functions (sunrise/sunset,etc.)
 ✅ on startup, wait for satellite lock. -> gnss_fix=1
+✅ bug where if `down` is the first toggle input, no `up` input is allowed.
+    > was switch bounce triggering the function to run at set the boundary to 0 since the switch wouldn't stay down
+    long enough to actually take steps. A sleep at the top of the function followed by another test for the pin's state eliminated this issue.
