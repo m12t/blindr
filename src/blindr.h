@@ -9,7 +9,7 @@
 
 
 // main program global vars, some of which are accessed and modified elsewhere
-uint low_boundary_set=0, high_boundary_set=0;
+uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
 int BOUNDARY_LOW=0, BOUNDARY_HIGH=0, MIDPOINT=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
 int8_t sec, min, hour, day, month, rise_hour, rise_minute, set_hour, set_minute, utc_offset;
 int16_t year;

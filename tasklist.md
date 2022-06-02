@@ -14,6 +14,14 @@ REMAINING TASKS:
 1. perform integration testing with the stepper ... install the components.
 
 
+POTENTIAL FUTURE VERISON FEATURES:
+------------------------------------------------------------------------------
+1. add a watchdog to keep the loop alive
+1. add the ability to power on/off gnss module and send configuratioins to it
+    > wake it every week or so to ensure the onboard RTC stays accurate.
+1. complicated blind openings like imperceptibly slowly opening and closing throughout the day, etc.
+
+
 COMPLETE TASKS:
 ------------------------------------------------------------------------------
 ✅ get stepper motor turning

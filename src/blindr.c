@@ -17,6 +17,7 @@ int main(void) {
     set_next_alarm();
 
     while (1) {
+        // just keep the program alive
         tight_loop_contents();
     }
 }
@@ -89,26 +90,16 @@ void set_next_alarm(void) {
         }
     }
 
-    // datetime_t next_alarm = {
-    //     .year  = next_year,
-    //     .month = next_month,
-    //     .day   = next_day,
-    //     .dotw  = next_dotw,
-    //     .hour  = next_hour,
-    //     .min   = next_min,
-    //     .sec   = 00
-    // };
-
-    datetime_t next_alarm = {  // for testing only
-        .year  = now.year,
-        .month = now.month,
-        .day   = now.day,
-        .dotw  = now.dotw,
-        .hour  = now.hour,
-        .min   = now.min,
-        .sec   = now.sec + 15
+    datetime_t next_alarm = {
+        .year  = next_year,
+        .month = next_month,
+        .day   = next_day,
+        .dotw  = next_dotw,
+        .hour  = next_hour,
+        .min   = next_min,
+        .sec   = 00
     };
-    
+
     // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
     rtc_set_alarm(&next_alarm, &set_next_alarm);
 }
@@ -154,20 +145,24 @@ void normalize_boundaries(void) {
 void find_boundary(uint gpio) {
     // todo: find BOTH boundaries, then
     // wait for down toggle
+    int stepped = 0;
     uint dir = gpio == GPIO_TOGGLE_DOWN_PIN ? 0 : 1;
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
         single_step(&current_position, dir, 30);
+        stepped++;
     }
     // update the respective boundary
-    if (gpio == GPIO_TOGGLE_UP_PIN) {
+    if (stepped && gpio == GPIO_TOGGLE_UP_PIN) {
         BOUNDARY_HIGH = current_position;
         high_boundary_set = 1;
         printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
-    } else {
+    } else if (stepped && gpio == GPIO_TOGGLE_DOWN_PIN) {
         BOUNDARY_LOW = current_position;
         low_boundary_set = 1;
         printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
+    } else {
+        // was just switch bounce, ignore it.
     }
     if (low_boundary_set && high_boundary_set) {
         normalize_boundaries();

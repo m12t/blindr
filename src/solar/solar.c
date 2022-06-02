@@ -183,8 +183,8 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     int8_t sh = floor(set / 60);
     int8_t sm = set - 60*sh;
 
-	printf("next rise: %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
-    printf("next set:  %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
+	printf("rise: %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
+    printf("set:  %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
 
     *rise_hour = rh;
     *rise_minute = rm;
