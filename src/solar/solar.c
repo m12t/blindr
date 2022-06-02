@@ -3,11 +3,6 @@
 // the below was translated from the code running at:
 // https://gml.noaa.gov/grad/solcalc/
 
-double latitude=44.869772, longitude=-93.369192;
-int16_t year = 2022;
-int8_t day=1, month=6;
-int utc_offset = -6;
-
 
 double radToDeg(double angleRad) {
 	return (180.0 * angleRad / PI);
@@ -182,8 +177,6 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     printf("JDAY: %f\n", jday);      // rbf
 	double rise = calcSunriseSet(1, jday, latitude, longitude, utc_offset);
 	double set  = calcSunriseSet(0, jday, latitude, longitude, utc_offset);
-    printf("raw rise: %f\n", rise);  // rbf
-    printf("raw set: %f\n", set);    // rbf
 
     int8_t rh = floor(rise / 60);
     int8_t rm = rise - 60*rh;

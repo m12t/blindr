@@ -11,12 +11,97 @@ int main(void) {
     toggle_init(&toggle_callback);
     gnss_init();
 
+    // wait for the rtc to come online and then set the next alarm
+    while (!rtc_running())
+        sleep_ms(1000);
+    set_next_alarm();
+
     while (1) {
-        // printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour+utc_offset, min, sec);  // rbf
-        // printf("latitude:  %f, longitude: %f\n", latitude, longitude);  // rbf
-        // printf("gnss_fix: %d\n", gnss_fix);  // rbf
+        tight_loop_contents();
     }
 }
+
+void set_next_alarm(void) {
+    rtc_get_datetime(&now);
+    calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                           now.year, now.month, now.day, utc_offset, latitude, longitude);
+    int16_t next_year, tomorrow_year=now.year;
+    int8_t next_month, next_day, next_dotw, next_hour, next_min, tomorrow_month = now.month, tomorrow_day = now.day;
+
+    // get tomorrow's day, month, and even year
+    today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
+    int8_t tomorrow_dotw = get_dotw(tomorrow_year, tomorrow_month, tomorrow_day);
+
+    if (rise_hour == now.hour && rise_minute == now.min) {
+        step_to_position(&current_position, MIDPOINT, BOUNDARY_HIGH);  // open the blinds
+        // next alarm will be sunset
+        next_year = now.year;
+        next_month = now.month;
+        next_day = now.day;
+        next_dotw = now.dotw,
+        next_hour = set_hour;
+        next_min = set_minute;
+    } else if (set_hour == now.hour && set_minute == now.min) {
+        step_to_position(&current_position, 0, BOUNDARY_HIGH);  // close the blinds
+        // the next event is a sunrise and will occur on the next calendar day. get that day.
+        calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                               tomorrow_year, tomorrow_month, tomorrow_day, utc_offset,
+                               latitude, longitude);
+        // next alarm will be sunrise
+        next_year = tomorrow_year;
+        next_month = tomorrow_month;
+        next_day = tomorrow_day;
+        next_dotw = tomorrow_dotw,
+        next_hour = rise_hour;
+        next_min = rise_minute;
+    } else {
+        // it's currently neither a sunrise or a sunset
+        // get the earliest hour that is still >= now.hour
+        if (rise_hour >= now.hour && rise_minute >= now.min) {
+            // the next valid event is a sunrise
+            next_year = now.year;
+            next_month = now.month;
+            next_day = now.day;
+            next_dotw = now.dotw,
+            next_hour = rise_hour;
+            next_min = rise_minute;
+            
+        } else if (set_hour >= now.hour && set_minute >= now.min) {
+            // the next valid event is a sunset
+            next_year = now.year;
+            next_month = now.month;
+            next_day = now.day;
+            next_dotw = now.dotw,
+            next_hour = set_hour;
+            next_min = set_minute;
+        } else {
+            // the time is after both the sunrise and sunset (or there were nether)...
+            // get the sunrise time tomorrow. if that's still not a thing, sleep for 1 minute
+            calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                                   tomorrow_year, tomorrow_month, tomorrow_day, utc_offset, latitude, longitude);
+            next_year = tomorrow_year;
+            next_month = tomorrow_month;
+            next_day = tomorrow_day;
+            next_dotw = tomorrow_dotw,
+            next_hour = rise_hour;
+            next_min = rise_minute;
+        }
+    }
+
+    datetime_t next_alarm = {
+        .year  = next_year,
+        .month = next_month,
+        .day   = next_day,
+        .dotw  = next_dotw,
+        .hour  = next_hour,
+        .min   = next_min,
+        .sec   = 00
+    };
+
+    printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);
+    rtc_set_alarm(&next_alarm, &set_next_alarm);
+}
+
 
 
 void disable_all_interrupts_for(uint gpio) {

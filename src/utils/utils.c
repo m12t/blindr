@@ -71,7 +71,6 @@ uint last_day_of_month_on(int8_t month, int16_t year) {
 }
 
 void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
-    printf("today is yesterday\n");
     if (*day == 1) {
         // it's the first of the month, yesterday was the last of the previous month
         if (*month == 1) {
@@ -89,7 +88,6 @@ void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour,
         *day -= 1;
     }
     *hour = 24 - abs(*hour + utc_offset);
-    printf("new hour: %d\n", *hour);  // rbf
 }
 
 void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {

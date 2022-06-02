@@ -17,7 +17,7 @@ add_subdirectory(./solar)
 
 
 add_executable(blindr blindr.c)
-target_link_libraries(blindr utils gnss stepper toggle solar)
+target_link_libraries(blindr utils gnss stepper toggle solar)  # rtc_alarm?
 
 pico_enable_stdio_usb(blindr 0)  # 0 before deployment - also remove all printf() statements
 pico_enable_stdio_uart(blindr 1) # 0 before deployment
