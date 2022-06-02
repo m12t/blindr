@@ -594,7 +594,7 @@ function calculate(adjusttz) {
 	console.log("total is", total)
 	var T = calcTimeJulianCent(total)
 	console.log("T is", T)
-	var azel = calcAzEl(T, data.time_local, data.lat, data.lon, data.tz)
+	>var azel = calcAzEl(T, data.time_local, data.lat, data.lon, data.tz)
 	var solnoon = calcSolNoon(jday, data.lon, data.tz)
 	var rise = calcSunriseSet(1, jday, data.lat, data.lon, data.tz)
 	var set  = calcSunriseSet(0, jday, data.lat, data.lon, data.tz)
