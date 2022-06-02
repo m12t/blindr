@@ -175,6 +175,9 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
                             int8_t *set_hour, int8_t *set_minute,
                             int16_t year, int8_t month, int8_t day,
                             int utc_offset, double latitude, double longitude) {
+    // the entry point and only function from this lib that needs to be called
+    // from outside of /solar. This function accepts 4 pointers which are then
+    // populated with the calculated times.
     double jday = getJD(year, month, day);
     printf("JDAY: %f\n", jday);      // rbf
 	double rise = calcSunriseSet(1, jday, latitude, longitude, utc_offset);
