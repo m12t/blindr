@@ -13,7 +13,7 @@
 
 // uart config
 #define UART_ID uart1
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600  // changes to 115200 after configuration
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY UART_PARITY_NONE
@@ -40,5 +40,17 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
 void get_utc_offset(double longitude, int8_t *utc_offset);
 void gnss_init(void);
 void gnss_deinit(void);
+
+// config functions
+int get_checksum(char *string);
+void uart_tx_setup(void);
+void uart_rx_setup(void);
+void compile_message(char *nmea_msg, char *raw_msg, char *checksum,
+                     char *terminator);
+int extract_baud_rate(char *string);
+void send_nmea(int testrun, int changing_baud);
+void send_ubx(int testrun);
+void fire_nmea_msg(char *msg);
+void fire_ubx_msg(uint8_t *msg, size_t len);
 
 

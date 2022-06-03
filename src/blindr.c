@@ -223,12 +223,12 @@ void toggle_callback(uint gpio, uint32_t event) {
 void disable_automation(void) {
     // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 0;
-    printf("automation state: %d\n", automation_enabled);  // rbf
+    // printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
 
 void enable_automation(void) {
     // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 1;
-    printf("automation state: %d\n", automation_enabled);  // rbf
+    // printf("automation state: %d\n", automation_enabled);  // rbf
 }
