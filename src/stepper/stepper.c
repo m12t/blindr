@@ -38,7 +38,7 @@ void single_step(int *current_position, uint direction, uint sleep_time) {
         busy_wait_us(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
         gpio_put(STEP_PIN, 1);
         *current_position += -(2*direction - 1);  // map [0, 1] to [-1, 1] and flip the sign since 0 is up
-        printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
+        // printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
     }
 }
 
@@ -60,7 +60,7 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
             break;
         } else {
             // a valid step can be taken, do so:
-            single_step(current_position, direction, 250);
+            single_step(current_position, direction, 500);
         }
     }
     sleep_stepper();

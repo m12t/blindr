@@ -6,8 +6,8 @@
 void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
                      int8_t hour, int8_t min, int8_t sec) {
     /* receive datetime data and set the RTC to the current time */
-    printf("setting onboard rtc...\n");  // rbf
-    printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
+    // printf("setting onboard rtc...\n");  // rbf
+    // printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
     int8_t dotw = get_dotw(year, month, day);  // note: this happens *after* utc_offset shifts and any corrections.
     // construct the datetime_t struct and populte it data
     datetime_t dt = {

@@ -386,6 +386,11 @@ void send_nmea(int testrun, int changing_baud) {
         compile_message(nmea_msg, messages[i], checksum, msg_terminator);  // assemble the components into the final msg
 
         if (!testrun) {
+            // if the gnss is already config'd for baud=115200, none of the
+            // messages will be sent, but they aren't needed because the gnss
+            // is already properly config'd. Nonetheless, this will update the
+            // pico uart baud to 115200 in order for it to extract lat, long,
+            // and datetime from the incoming messages
             fire_nmea_msg(nmea_msg);
             if (strncmp(nmea_msg, update_baud_rate, 23) == 0) {
                 int new_baud;

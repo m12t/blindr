@@ -5,8 +5,8 @@
 int main(void) {
     // main program loop for blindr
 
-    stdio_init_all();  // rbf - used for debugging
-    printf("blindr initializing...!\n");
+    // stdio_init_all();  // rbf - used for debugging
+    // printf("blindr initializing...!\n");
 
     stepper_init();
     toggle_init(&toggle_callback);
@@ -101,7 +101,7 @@ void set_next_alarm(void) {
         .sec   = 00
     };
 
-    printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
+    // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
     rtc_set_alarm(&next_alarm, &set_next_alarm);
 }
 
@@ -129,23 +129,22 @@ void set_automation_state(void) {
 
 void normalize_boundaries(void) {
     // set low boundary to 0
-    printf("normalizing...\n");  // rbf
-    printf("current pos before: %d\n", current_position);  // rbf
-    printf("--------------\n");  // rbf
+    // printf("normalizing...\n");  // rbf
+    // printf("current pos before: %d\n", current_position);  // rbf
+    // printf("--------------\n");  // rbf
     current_position += abs(BOUNDARY_LOW);
     BOUNDARY_HIGH += abs(BOUNDARY_LOW);
     BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
     MIDPOINT = (BOUNDARY_HIGH - BOUNDARY_LOW) / 2;
-    printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
-    printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
-    printf("current pos after: %d\n", current_position);  // rbf
-    printf("middy: %d\n", MIDPOINT);  // rbf
+    // printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
+    // printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
+    // printf("current pos after: %d\n", current_position);  // rbf
+    // printf("middy: %d\n", MIDPOINT);  // rbf
 
 }
 
 
 void find_boundary(uint gpio) {
-    // todo: find BOTH boundaries, then
     // wait for down toggle
     busy_wait_ms(100);  // combar switch bounce
     int stepped = 0;
@@ -155,7 +154,7 @@ void find_boundary(uint gpio) {
     wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir, 1000);
+        single_step(&current_position, dir, 1500);
         stepped = 1;
     }
     sleep_stepper();
