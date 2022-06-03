@@ -11,8 +11,8 @@ int toggle_init(void *toggle_callback) {
     // a falling edge has occurred. This happens in `blindr.c`
     gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_DOWN_PIN, GPIO_IRQ_EDGE_FALL, true, toggle_callback);
     gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_UP_PIN, GPIO_IRQ_EDGE_FALL, true, toggle_callback);
-    gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_DOWN_PIN, GPIO_IRQ_EDGE_RISE, false, toggle_callback);
-    gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_UP_PIN, GPIO_IRQ_EDGE_RISE, false, toggle_callback);
+    gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_DOWN_PIN, GPIO_IRQ_EDGE_RISE, true, toggle_callback);
+    gpio_set_irq_enabled_with_callback(GPIO_TOGGLE_UP_PIN, GPIO_IRQ_EDGE_RISE, true, toggle_callback);
 
 
     return 0;

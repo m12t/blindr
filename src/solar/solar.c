@@ -184,7 +184,7 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     int8_t sm = set - 60*sh;
 
 	printf("rise: %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
-    printf("set:  %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
+    printf("set:  %d/%d/%d  %d:%d:00\n", month, day, year, sh, sm);  // rbf
 
     *rise_hour = rh;
     *rise_minute = rm;

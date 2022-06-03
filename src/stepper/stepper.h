@@ -6,7 +6,7 @@
 #include <stdint.h>             // needed for int8_t and int16_t
 #include <ctype.h>              // needed???
 #include "pico/stdlib.h"        // GPIO_OUT, etc.
-#include "../toggle/toggle.h"   // for GPIO_TOGGLE_DOWN_PIN
+#include "../toggle/toggle.h"   // for gpio toggle pins
 
 
 #define SLEEP_PIN 13

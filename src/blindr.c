@@ -5,7 +5,8 @@
 int main(void) {
     // main program loop for blindr
 
-    // stdio_init_all();  // rbf - used for debugging
+    stdio_init_all();  // rbf - used for debugging
+    printf("runnnnnning!\n");
 
     stepper_init();
     toggle_init(&toggle_callback);
@@ -153,7 +154,7 @@ void find_boundary(uint gpio) {
     wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir, 250);
+        single_step(&current_position, dir, 3000);
         stepped = 1;
     }
     sleep_stepper();
@@ -177,7 +178,8 @@ void find_boundary(uint gpio) {
 
 void toggle_callback(uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
-    // busy_wait_ms(100);
+    busy_wait_ms(100);
+    printf("toggle on pin: %d event: %02X\n", gpio, event);
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
