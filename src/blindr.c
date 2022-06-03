@@ -101,7 +101,7 @@ void set_next_alarm(void) {
         .sec   = 00
     };
 
-    // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
+    printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
     rtc_set_alarm(&next_alarm, &set_next_alarm);
 }
 
