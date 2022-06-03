@@ -2,7 +2,7 @@
 
 
 void stepper_init(void) {
-    printf("INITing Stepper\n");
+    // printf("INITing Stepper\n");
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
     gpio_init(DIRECTION_PIN);
@@ -37,7 +37,7 @@ void single_step(int *current_position, uint direction, uint sleep_time) {
         busy_wait_us(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
         gpio_put(STEP_PIN, 1);
         *current_position += -(2*direction - 1);  // map [0, 1] to [-1, 1] and flip the sign since 0 is up
-        printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
+        // printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
     }
 }
 

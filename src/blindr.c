@@ -5,7 +5,7 @@
 int main(void) {
     // main program loop for blindr
 
-    stdio_init_all();  // rbf - used for debugging
+    // stdio_init_all();  // rbf - used for debugging
 
     stepper_init();
     toggle_init(&toggle_callback);
@@ -128,16 +128,16 @@ void set_automation_state(void) {
 
 void normalize_boundaries(void) {
     // set low boundary to 0
-    printf("normalizing...\n");  // rbf
-    printf("current pos before: %d\n", current_position);  // rbf
+    // printf("normalizing...\n");  // rbf
+    // printf("current pos before: %d\n", current_position);  // rbf
     current_position += abs(BOUNDARY_LOW);
     BOUNDARY_HIGH += abs(BOUNDARY_LOW);
     BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
     MIDPOINT = (BOUNDARY_HIGH - BOUNDARY_LOW) / 2;
-    printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
-    printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
-    printf("current pos after: %d\n", current_position);  // rbf
-    printf("middy: %d\n", MIDPOINT);  // rbf
+    // printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
+    // printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
+    // printf("current pos after: %d\n", current_position);  // rbf
+    // printf("middy: %d\n", MIDPOINT);  // rbf
 
 }
 
@@ -147,9 +147,9 @@ void find_boundary(uint gpio) {
     // wait for down toggle
     busy_wait_ms(100);  // combar switch bounce
     int stepped = 0;
-    printf("gpio: %d\n", gpio);
+    // printf("gpio: %d\n", gpio);
     uint dir = gpio == GPIO_TOGGLE_UP_PIN ? 0 : 1;
-    printf("dir: %d\n", dir);
+    // printf("dir: %d\n", dir);
     wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
@@ -161,11 +161,11 @@ void find_boundary(uint gpio) {
     if (stepped && dir == 0) {
         BOUNDARY_HIGH = current_position;
         high_boundary_set = 1;
-        printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
+        // printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
     } else if (stepped && dir == 1) {
         BOUNDARY_LOW = current_position;
         low_boundary_set = 1;
-        printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
+        // printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
@@ -231,12 +231,4 @@ void enable_automation(void) {
     // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
     automation_enabled = 1;
     printf("automation state: %d\n", automation_enabled);  // rbf
-}
-
-
-void daily_loop(void) {
-    // calculate the next event (sunrise/sunset)
-    // set an rtc alarm for that time
-    // don't check for automation_enabled here... because it might be changed later.. calculate the next event
-    // and check for automatino just before executing it.
 }

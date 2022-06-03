@@ -203,7 +203,7 @@ void on_uart_rx(void) {
 }
 
 void gnss_init(void) {
-    stdio_init_all();
+    // stdio_init_all();
     uart_init(UART_ID, BAUD_RATE);
 
     // Set the TX and RX pins by using the function select on the GPIO
