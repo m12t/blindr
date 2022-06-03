@@ -2,7 +2,7 @@
 
 
 void stepper_init(void) {
-    // printf("INITing Stepper\n");
+    // printf("Initializing Stepper\n");
     gpio_init(SLEEP_PIN);
     gpio_init(STEP_PIN);
     gpio_init(DIRECTION_PIN);
@@ -22,15 +22,17 @@ void wake_stepper() {
 
 
 void sleep_stepper() {
-    busy_wait_ms(250);  // to combat bounce in the blinds when moving them really fast.
+    // save power and reduce heat/stress by shutting down the stepper when it isn't
+    // needed since stepper motors pull full current even when stationary.
+    busy_wait_ms(250);  // to combat bounce in position of the blinds when moving them really fast.
     gpio_put(SLEEP_PIN, 0);
     busy_wait_ms(2);  // purely a safety margin
 }
 
 
 void single_step(int *current_position, uint direction, uint sleep_time) {
-    // create a single rising edge to trigger a single step and
-    // update the current position accordingly
+    // create a single rising edge to trigger a single
+    // step and update the current position accordingly
     if (direction == 0 || direction == 1) {
         gpio_put(DIRECTION_PIN, direction);
         // it's a valid direction, take a step
@@ -44,9 +46,11 @@ void single_step(int *current_position, uint direction, uint sleep_time) {
 
 
 int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin) {
-    // alternate to single step() where this function reads the toggle switch value
+    // alternate to single_step() where this function reads the toggle switch value
     // directly and also modifies the current position automatically.
-
+    // NOTE: this function can only be called once the boundary are already set
+    //       since the startup routine automatically reads the initial toggle inputs
+    //       as setting the lower and upper boundaries (in no particular order)
     wake_stepper();
     uint direction = toggle_pin == GPIO_TOGGLE_UP_PIN ? 0 : 1;  // change to whatever pin ends up being used...
     while ((gpio_get(toggle_pin) == 0) &&
@@ -86,7 +90,7 @@ int step_to_position(int *current_position, uint desired_position, uint BOUNDARY
 
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
-        single_step(current_position, direction, 500);  // do so quetyly and gradually
+        single_step(current_position, direction, 500);
     }
 
     sleep_stepper();

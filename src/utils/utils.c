@@ -42,6 +42,7 @@ uint last_day_of_month_on(int8_t month, int16_t year) {
     switch (month) {
         case 1:
             return 31;
+            // NOTE: no `break;` needed
         case 2:
             if (is_leapyear(year))
                 return 29;

@@ -3,7 +3,6 @@
 
 
 int main(void) {
-    // main program loop for blindr
 
     // stdio_init_all();  // rbf - used for debugging
     // printf("blindr initializing...!\n");
@@ -12,24 +11,27 @@ int main(void) {
     toggle_init(&toggle_callback);
     gnss_init();
 
-    // wait for the rtc to come online and then set the next alarm
+    // wait for the rtc to come online and then set an alarm for the next solar event (rise/set)
     while (!rtc_running())
         sleep_ms(1000);
     set_next_alarm();
 
     while (1) {
-        // just keep the program alive
+        // keep the program alive indefinitely
         tight_loop_contents();
     }
 }
 
 
 void set_next_alarm(void) {
+    // handle the current alarm/event and set the next one.
+
+    int16_t next_year, tomorrow_year=now.year;
+    int8_t next_month, next_day, next_dotw, next_hour, next_min, tomorrow_month=now.month, tomorrow_day=now.day;
+
     rtc_get_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                            now.year, now.month, now.day, utc_offset, latitude, longitude);
-    int16_t next_year, tomorrow_year=now.year;
-    int8_t next_month, next_day, next_dotw, next_hour, next_min, tomorrow_month = now.month, tomorrow_day = now.day;
 
     // get tomorrow's day, month, and even year
     today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
@@ -58,7 +60,7 @@ void set_next_alarm(void) {
         next_hour = rise_hour;
         next_min = rise_minute;
     } else {
-        // it's currently neither a sunrise or a sunset
+        // it's currently neither a sunrise or a sunset (this runs most commonly on startup)
         // get the earliest hour that is still >= now.hour
         if (rise_hour >= now.hour && rise_minute >= now.min) {
             // the next valid event is a sunrise
@@ -79,7 +81,8 @@ void set_next_alarm(void) {
             next_min = set_minute;
         } else {
             // the time is after both the sunrise and sunset (or there were nether)...
-            // get the sunrise time tomorrow. if that's still not a thing, sleep for 1 minute
+            // get the sunrise time tomorrow. In the edge case there is none (ie. high
+            // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                    tomorrow_year, tomorrow_month, tomorrow_day, utc_offset, latitude, longitude);
             next_year = tomorrow_year;

@@ -3,7 +3,8 @@
 
 int toggle_init(void *toggle_callback) {
 
-    // initialize the toggle switch pins tied high and throwing the switch pulls them to ground
+    // initialize the toggle switch pins tied high such that throwing
+    // the switch pulls them to ground and gives a falling edge
     gpio_pull_up(18);  // change the pin number as needed
     gpio_pull_up(19);
 

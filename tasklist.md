@@ -18,6 +18,8 @@ POTENTIAL FUTURE VERISON FEATURES:
     > wake it every week or so to ensure the onboard RTC stays accurate.
 1. complicated blind openings like imperceptibly slowly opening and closing throughout the day, etc.
 1. allow for a mode that runs without gnss/uart on startup (implement a timeout on listening on uart??? if uart isn't found within 15 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
+1. use DMA instead of the long and slow IRQ currently used for reading GNSS data. The current system works enough for the latency and throughput, though.
+1. use PIO on the pico to control the stepper instead of bit banging the signals.
 
 COMPLETE TASKS:
 ------------------------------------------------------------------------------
