@@ -22,6 +22,7 @@ void wake_stepper() {
 
 
 void sleep_stepper() {
+    busy_wait_ms(250);  // to combat bounce in the blinds when moving them really fast.
     gpio_put(SLEEP_PIN, 0);
     busy_wait_ms(2);  // purely a safety margin
 }
@@ -37,7 +38,7 @@ void single_step(int *current_position, uint direction, uint sleep_time) {
         busy_wait_us(sleep_time);  // give a healthy margin between signals - busy wait needed during interrupt
         gpio_put(STEP_PIN, 1);
         *current_position += -(2*direction - 1);  // map [0, 1] to [-1, 1] and flip the sign since 0 is up
-        // printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
+        printf("single step -- dir: %d, pos: %d\n", direction, *current_position);  // rbf
     }
 }
 
@@ -59,7 +60,7 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
             break;
         } else {
             // a valid step can be taken, do so:
-            single_step(current_position, direction, 150);
+            single_step(current_position, direction, 250);
         }
     }
     sleep_stepper();
@@ -85,7 +86,7 @@ int step_to_position(int *current_position, uint desired_position, uint BOUNDARY
 
     while (*current_position != desired_position) {
         direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
-        single_step(current_position, direction, 500);
+        single_step(current_position, direction, 500);  // do so quetyly and gradually
     }
 
     sleep_stepper();

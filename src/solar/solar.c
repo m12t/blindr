@@ -1,6 +1,6 @@
 #include "solar.h"
 
-// the below was translated from the code running at:
+// the below was translated from the client-side JS code running at:
 // https://gml.noaa.gov/grad/solcalc/
 
 
@@ -174,7 +174,7 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     // from outside of /solar. This function accepts 4 pointers which are then
     // populated with the calculated times.
     double jday = getJD(year, month, day);
-    printf("JDAY: %f\n", jday);      // rbf
+    // printf("JDAY: %f\n", jday);      // rbf
 	double rise = calcSunriseSet(1, jday, latitude, longitude, utc_offset);
 	double set  = calcSunriseSet(0, jday, latitude, longitude, utc_offset);
 
@@ -183,8 +183,8 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     int8_t sh = floor(set / 60);
     int8_t sm = set - 60*sh;
 
-	printf("rise: %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
-    printf("set:  %d/%d/%d  %d:%d:00\n", month, day, year, sh, sm);  // rbf
+	// printf("today's rise is at: %d/%d/%d  %d:%d:00\n", month, day, year, rh, rm);  // rbf
+    // printf("today's set is at:  %d/%d/%d  %d:%d:00\n", month, day, year, sh, sm);  // rbf
 
     *rise_hour = rh;
     *rise_minute = rm;

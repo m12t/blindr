@@ -6,7 +6,7 @@ int main(void) {
     // main program loop for blindr
 
     stdio_init_all();  // rbf - used for debugging
-    printf("runnnnnning!\n");
+    printf("blindr initializing...!\n");
 
     stepper_init();
     toggle_init(&toggle_callback);
@@ -129,16 +129,17 @@ void set_automation_state(void) {
 
 void normalize_boundaries(void) {
     // set low boundary to 0
-    // printf("normalizing...\n");  // rbf
-    // printf("current pos before: %d\n", current_position);  // rbf
+    printf("normalizing...\n");  // rbf
+    printf("current pos before: %d\n", current_position);  // rbf
+    printf("--------------\n");  // rbf
     current_position += abs(BOUNDARY_LOW);
     BOUNDARY_HIGH += abs(BOUNDARY_LOW);
     BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
     MIDPOINT = (BOUNDARY_HIGH - BOUNDARY_LOW) / 2;
-    // printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
-    // printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
-    // printf("current pos after: %d\n", current_position);  // rbf
-    // printf("middy: %d\n", MIDPOINT);  // rbf
+    printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
+    printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
+    printf("current pos after: %d\n", current_position);  // rbf
+    printf("middy: %d\n", MIDPOINT);  // rbf
 
 }
 
@@ -154,7 +155,7 @@ void find_boundary(uint gpio) {
     wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir, 3000);
+        single_step(&current_position, dir, 1000);
         stepped = 1;
     }
     sleep_stepper();
@@ -178,8 +179,6 @@ void find_boundary(uint gpio) {
 
 void toggle_callback(uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
-    busy_wait_ms(100);
-    printf("toggle on pin: %d event: %02X\n", gpio, event);
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done

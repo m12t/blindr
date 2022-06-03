@@ -174,6 +174,7 @@ void on_uart_rx(void) {
                 // always parse this as it has the `gnss_fix` flag
                 if (!lat_long_set) {
                     parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
+                    // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
                 }
                 if (rtc_running()) {
                     // rtc is running and lat and long are set. shut down UART.
