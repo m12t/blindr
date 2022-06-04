@@ -39,62 +39,58 @@ void set_next_alarm(void) {
 
     if (next_event == 1) {
         step_to_position(&current_position, MIDPOINT, BOUNDARY_HIGH);  // open the blinds
-        // next alarm will be sunset
+        next_event = 0;  // next alarm will be sunset
         next_year = now.year;
         next_month = now.month;
         next_day = now.day;
         next_dotw = now.dotw,
         next_hour = set_hour;
         next_min = set_minute;
-        next_event = 0;  // next up is a set
     } else if (next_event == 0) {
         step_to_position(&current_position, 0, BOUNDARY_HIGH);  // close the blinds
         // the next event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                tomorrow_year, tomorrow_month, tomorrow_day, utc_offset,
                                latitude, longitude);
-        // next alarm will be sunrise
+        next_event = 1;  // next alarm will be sunrise
         next_year = tomorrow_year;
         next_month = tomorrow_month;
         next_day = tomorrow_day;
         next_dotw = tomorrow_dotw,
         next_hour = rise_hour;
         next_min = rise_minute;
-        next_event = 1;  // next up is a rise
     } else {
         // it's currently neither a sunrise or a sunset (this runs most commonly on startup)
         // get the earliest hour that is still >= now.hour
         if (rise_hour >= now.hour && rise_minute >= now.min) {
-            // the next valid event is a sunrise
+            next_event = 1;  // the next valid event is a sunrise
             next_year = now.year;
             next_month = now.month;
             next_day = now.day;
             next_dotw = now.dotw,
             next_hour = rise_hour;
             next_min = rise_minute;
-            next_event = 1;  // next up is a rise
         } else if (set_hour >= now.hour && set_minute >= now.min) {
-            // the next valid event is a sunset
+            next_event = 0;  // the next valid event is a sunset
             next_year = now.year;
             next_month = now.month;
             next_day = now.day;
             next_dotw = now.dotw,
             next_hour = set_hour;
             next_min = set_minute;
-            next_event = 0;  // next up is a set
         } else {
             // the time is after both the sunrise and sunset (or there were neither)...
             // get the sunrise time tomorrow. In the edge case there is none (ie. high
             // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                    tomorrow_year, tomorrow_month, tomorrow_day, utc_offset, latitude, longitude);
+            next_event = -1;  // invalid again
             next_year = tomorrow_year;
             next_month = tomorrow_month;
             next_day = tomorrow_day;
             next_dotw = tomorrow_dotw,
             next_hour = rise_hour;
             next_min = rise_minute;
-            next_event = -1;
         }
     }
 
