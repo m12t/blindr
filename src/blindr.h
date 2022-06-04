@@ -17,6 +17,7 @@ double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be s
 int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
 int automation_enabled=1;  // flag useful for whether or not to operate the blinds automatically.
 datetime_t now = {0};  // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
+int next_event = -1;
 
 #endif
 
