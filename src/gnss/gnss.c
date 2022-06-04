@@ -4,8 +4,8 @@
 
 void parse_buffer(char *buffer, char **sentences, int max_sentences) {
     /*
-    split out the buffer into individual NMEA sentences
-    which are terminated by <cr><lf> aka `\r\n`
+    split the monolithic buffer into discrete NMEA
+    sentences which are terminated by <cr><lf> aka `\r\n`
     */
     int i = 0;
     char *eol;  // end of line
@@ -42,11 +42,11 @@ void parse_zda(char **zda_msg, int16_t *year, int8_t *month, int8_t *day,
 void to_decimal_degrees(double *position, int *direction) {
     // convert degrees and minutes to decimal degrees
     // get the first 2 (latitude) or 3 (longitude) digits denoting the degrees:
-    int whole_degrees = (*position/100);               // implicit conversion to int after floating point arithmetic (faster)
+    int whole_degrees = (*position/100);  // implicit conversion to int after floating point arithmetic (faster)
     // get the last 2 digits before the decimal denoting whole minutes:
     int whole_minutes = (*position - 100*whole_degrees);
     // grab everything after the decimal (the partial minutes):
-    double partial_minutes = *position - (int)*position;  // implicit conversion to int after floating point arithmetic (faster)
+    double partial_minutes = *position - (int)*position;
     *position = whole_degrees + (whole_minutes + partial_minutes) / 60;
     if (*direction == 0) {
         // direction is `S` or `W` -- make the position negative
@@ -63,7 +63,7 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     // long : [4]
     // ew   : [5]  ('E' or 'W')
     *gnss_fix = atoi(gga_msg[6]);
-    if (gnss_fix && !latitude) {
+    if (*gnss_fix && !(*latitude || *longitude)) {
         // * nothing has been set yet and there is a gnss fix so the data are presumed valid.
         // * the check for !latitude allows this function to be called after a sleep without
         //   modifying the latitude and longitude data unnecessarily yet still relaying if
@@ -148,13 +148,14 @@ int checksum_valid(char *string) {
 void on_uart_rx(void) {
     size_t len = 256;
     char buffer[len];  // make a buffer of size `len` for the raw message
-    char *sentences[16] = {NULL};  //initialize an array of NULL pointers that will pointing to the location of the start of each sentence within buffer
+    char *sentences[16] = {NULL};
     uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
-    parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));  // split the monolithic buffer into discrete sentences
+    parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));
 
     int i=0, valid=0, msg_type = 0, num_fields=0;
 	while (sentences[i]) {
         // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        // printf("gnss fix: %d\n", gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
@@ -177,29 +178,35 @@ void on_uart_rx(void) {
             } else if (msg_type == 2 && gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                get_utc_offset(longitude, &utc_offset);
-                localize_datetime(&year, &month, &day, &hour, utc_offset);
-                set_onboard_rtc(year, month, day, hour, min, sec);
-                // rtc is running and lat and long are set by nature of gnss_fix=1. shut down UART.
-                gnss_deinit();
+                // printf("%d:%d:%d\n", hour, min, sec);
+                if (latitude && longitude && year && month && day && (day || hour || sec)) {
+                    // last check the values are atleast nonzero.
+                    // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
+                    // but the next second won't be
+                    get_utc_offset(longitude, &utc_offset);
+                    localize_datetime(&year, &month, &day, &hour, utc_offset);
+                    set_onboard_rtc(year, month, day, hour, min, sec);
+                    // rtc is running and lat and long are set by nature of gnss_fix=1. shut down UART.
+                    // printf("final lat long: %f, %f\n", latitude, longitude);  // rbf
+                    gnss_deinit();
+                }
             } else {}
         }
 		i++;
 	}
-    // printf("-----------------------\n");  // rbf
 }
 
 void gnss_init(void) {
+    gnss_running = 1;
     // stdio_init_all();
+    printf("initializing gnss\n");  // rbf
+    gnss_running = 1;  // set a flag that gnss is running
     uart_init(UART_ID, baud_rate);
-
     uart_tx_setup();  // initialize UART Tx on the pico
 
     wake_gnss();
-
-    int change_baud = baud_rate == 9600 ? 1 : 0;  // only change baud if it's 9600
-    send_nmea(0, change_baud);  // make changes to desired sentences and/or baud rate
-    send_ubx(0);   // save the configurations to non-volatile mem on the chip.
+    busy_wait_ms(500);  // give the module a chance to boot before spamming config messages
+    config_gnss();  // make changes to desired sentences and baud rate
 
     uart_rx_setup();
 }
@@ -207,8 +214,18 @@ void gnss_init(void) {
 
 void wake_gnss(void) {
     // put the GNSS module in `continuous` mode
-    printf("waking the gnss module...\n");  // rbf
-    uint8_t wake_msg[] = { 0xB5,0x62,0x06,0x11,0x02,0x00,0x08,0x00,0x21,0x91 };
+    // printf("waking the gnss module on baud: %d ...\n", baud_rate);  // rbf
+    uint8_t wake_msg[] = {  // power on
+        0xB5,0x62,0x02,0x41,0x10,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x06,0x00,0x00,0x00,0x08,0x00,
+        0x00,0x00,0x61,0x6B
+    };
+    uint8_t wake_msg_force[] = {  // power on
+        0xB5,0x62,0x02,0x41,0x10,0x00,0x00,0x00,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x08,0x00,
+        0x00,0x00,0x5D,0x4B
+    };
+    busy_wait_ms(250);  // ensure that the module has had time to go to sleep
     fire_ubx_msg(wake_msg, sizeof(wake_msg));
 }
 
@@ -216,20 +233,25 @@ void wake_gnss(void) {
 void sleep_gnss(void) {
     // put the GNSS module in `power save` mode
     printf("sleeping the gnss module...\n");  // rbf
-    uint8_t wake_msg[] = { 0xB5,0x62,0x06,0x11,0x02,0x00,0x08,0x01,0x22,0x92 };
-    fire_ubx_msg(wake_msg, sizeof(wake_msg));
+    uint8_t sleep_msg[] = {  // sleep indefinitely
+        0xB5,0x62,0x02,0x41,0x08,0x00,0x00,0x00,0x00,0x00,
+        0x02,0x00,0x00,0x00,0x4D,0x3B
+    };
+    fire_ubx_msg(sleep_msg, sizeof(sleep_msg));
 }
 
 
 void gnss_deinit(void) {
-    // printf("deinitializing uart!\n");  // rbf
     // sleep the gnss module
-    gnss_fix = 0;    // important to force a reset for the next startup
+    printf("deinitializing gnss\n");
     sleep_gnss();
     // deinit uart
     uart_deinit(UART_ID);
     // disable IRQ
     irq_set_enabled(UART1_IRQ, false);
+
+    gnss_fix = 0;    // important to force a reset for the next startup
+    gnss_running = 0;  // turn of the flag, freeing executing in set_next_alarm()
 }
 
 
@@ -333,7 +355,7 @@ void fire_nmea_msg(char *msg) {
     }
 }
 
-void send_nmea(int testrun, int changing_baud) {
+void config_gnss() {
     // below are some NMEA PUBX messages to be modified as needed.
     // checksum values (immediately following `*`) are generated automatically
 
@@ -352,8 +374,10 @@ void send_nmea(int testrun, int changing_baud) {
     char update_baud_rate[] = "$PUBX,41,1,3,3,115200,0*";  // update baud rate to 115200
     int num_disables = sizeof(disable_identifiers) / sizeof(disable_identifiers[0]);
     int num_enables = sizeof(enable_identifiers) / sizeof(enable_identifiers[0]);
-    char *messages[num_enables + num_disables + changing_baud];
+    char *messages[num_enables + num_disables];
     int msg_count = 0;
+
+    messages[msg_count++] = update_baud_rate;
 
     // construct the disabling messages
     for (int i=0; i < num_disables; i++) {
@@ -375,11 +399,6 @@ void send_nmea(int testrun, int changing_baud) {
         messages[msg_count++] = strdup(raw_msg);
     }
 
-    if (changing_baud == 1) {
-        // add the baud rate message, if applicable
-        messages[msg_count++] = update_baud_rate;  // strdup not needed since `update_baud_rate` wont't be overwritten
-    }
-
     for (int i=0; i < msg_count; i++) {
         int decimal_checksum;  // placeholder for the integer value checksum checksum
         decimal_checksum = get_checksum(messages[i]);  // calc the hex checksum and write it to the `checksum` array
@@ -393,83 +412,18 @@ void send_nmea(int testrun, int changing_baud) {
         strcpy(nmea_msg, "");  // initialize to empty string to avoid junk values
         compile_message(nmea_msg, messages[i], checksum, msg_terminator);  // assemble the components into the final msg
 
-        if (!testrun) {
-            // if the gnss is already config'd for baud=115200, none of the
-            // messages will be sent, but they aren't needed because the gnss
-            // is already properly config'd. Nonetheless, this will update the
-            // pico uart baud to 115200 in order for it to extract lat, long,
-            // and datetime from the incoming messages
-            fire_nmea_msg(nmea_msg);
-            if (strncmp(nmea_msg, update_baud_rate, 23) == 0) {
-                baud_rate = extract_baud_rate(update_baud_rate);
-                // update the pico's UART baud rate to the newly set value.
-                // printf("updating baud rate to %d\n", new_baud);
-                uart_set_baudrate(UART_ID, baud_rate);
-            }
+        // if the gnss is already config'd for baud=115200, none of the
+        // messages will be sent, but they aren't needed because the gnss
+        // is already properly config'd. Nonetheless, this will update the
+        // pico uart baud to 115200 in order for it to extract lat, long,
+        // and datetime from the incoming messages
+        fire_nmea_msg(nmea_msg);
+        if (strncmp(nmea_msg, update_baud_rate, 23) == 0) {
+            baud_rate = extract_baud_rate(update_baud_rate);
+            // update the pico's UART baud rate to the newly set value.
+            // printf("updating baud rate to %d\n", new_baud);
+            uart_set_baudrate(UART_ID, baud_rate);
         }
-    }
-}
-
-void send_ubx(int testrun) {
-    // cfg_cfg_save_all will cause the changes to be permanent and persist through power cycles.
-
-    // this is currently not working. the config will persist for a short period after disconnecting
-    // the module, but after several hours the config will be lost. This is likely saving to battery-backed RAM
-    // and once the battery discharges it will be erased. Need to configure to write it to flash.
-    // the TBS m8.2 supposedly has onboard flash, run UBX-LOG-INFO to verify.
-    uint8_t load_last_flash[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x12,0x2C,0xC2
-    };
-    uint8_t cfg_cfg_flash_all[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
-        0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x12,0x2C,0xBA
-    };
-
-    uint8_t cfg_cfg_spi_flash[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
-        0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x10,0x2A,0xB8
-    };
-
-    // save to battery-backed RAM
-    uint8_t cfg_cfg_bbr[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
-        0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x1B,0xA9
-    };
-
-    uint8_t cfg_cfg_bbr_flash_spiflash[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
-        0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x13,0x2D,0xBB
-    };
-
-    uint8_t cfg_cfg_i2c_eeprom[] = {
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
-        0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x04,0x1E,0xAC
-    };
-    uint8_t revert_bbr_to_default[] = { 
-        0xB5,0x62,0x06,0x09,0x0D,0x00,0xFF,0xFF,0x00,0x00,0x00,
-        0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x01,0x19,0x98
-    };
-
-    // below changes baud rate to `115200`
-    uint8_t cfg_prt[] = {
-        0xB5,0x62,0x06,0x00,0x14,0x00,0x01,0x00,0x00,0x00,
-        0xD0,0x08,0x00,0x00,0x00,0xC2,0x01,0x00,0x07,0x00,
-        0x03,0x00,0x00,0x00,0x00,0x00,0xC0,0x7E
-    };
-    
-    // create a flash file
-    uint8_t log_create[] = {
-        0xB5,0x62,0x21,0x07,0x08,0x00,0x00,0x00,0x00,0x00,
-        0x00,0x00,0x00,0x00,0x30,0x29
-    };
-
-    // pick the desired message and send it.
-    if (!testrun) {
-        fire_ubx_msg(cfg_cfg_bbr, sizeof(cfg_cfg_bbr));
-        // // busy_wait_ms(500);
-        
-        // printf("done firing UBX\n");
     }
 }
 

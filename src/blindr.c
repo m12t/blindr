@@ -4,16 +4,15 @@
 
 int main(void) {
 
-    // stdio_init_all();  // rbf - used for debugging
-    // printf("blindr initializing...!\n");
+    stdio_init_all();  // rbf - used for debugging
+    printf("blindr initializing...!\n");
 
     stepper_init();
     toggle_init(&toggle_callback);
     gnss_init();
+    while (gnss_running)
+        sleep_ms(500);
 
-    // wait for the rtc to come online and then set an alarm for the next solar event (rise/set)
-    while (!rtc_running())
-        sleep_ms(1000);
     set_next_alarm();
 
     while (1) {
@@ -25,6 +24,7 @@ int main(void) {
 
 void set_next_alarm(void) {
     // handle the current alarm/event and set the next one.
+    printf("at the top of set_next_alarm\n");
 
     int16_t next_year, tomorrow_year=now.year;
     int8_t next_month, next_day, next_dotw, next_hour, next_min, tomorrow_month=now.month, tomorrow_day=now.day;
@@ -32,6 +32,8 @@ void set_next_alarm(void) {
     rtc_get_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                            now.year, now.month, now.day, utc_offset, latitude, longitude);
+
+    printf("rise %d:%d, set %d:%d\n", rise_hour, rise_minute, set_hour, set_minute);
 
     // get tomorrow's day, month, and even year
     today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
@@ -62,7 +64,8 @@ void set_next_alarm(void) {
     } else {
         // it's currently neither a sunrise or a sunset (this runs most commonly on startup)
         // get the earliest hour that is still >= now.hour
-        if (rise_hour >= now.hour && rise_minute >= now.min) {
+        if ((rise_hour > now.hour) || (rise_hour == now.hour && rise_minute >= now.min)) {
+            printf("rh > nh (%d > %d)\n", rise_hour, now.hour);
             next_event = 1;  // the next valid event is a sunrise
             next_year = now.year;
             next_month = now.month;
@@ -70,7 +73,8 @@ void set_next_alarm(void) {
             next_dotw = now.dotw,
             next_hour = rise_hour;
             next_min = rise_minute;
-        } else if (set_hour >= now.hour && set_minute >= now.min) {
+        } else if ((set_hour > now.hour) || (set_hour == now.hour && set_minute >= now.min)) {
+            printf("sh > nh (%d > %d)\n", set_hour, now.hour);
             next_event = 0;  // the next valid event is a sunset
             next_year = now.year;
             next_month = now.month;
@@ -104,7 +108,13 @@ void set_next_alarm(void) {
         .sec   = 00
     };
 
-    // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
+    printf("leaving set_next_alarm()\n");
+    gnss_init();  // get the latest accurate time from gnss data to recalibrate the onboard RTC
+    while (gnss_running)
+        sleep_ms(500);
+    printf("back in set_next_alarm\n");
+    printf("local time is: %d/%d/%d %d:%d:00\n", now.month, now.day, now.year, now.hour, now.min);  // rbf
+    printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", next_month, next_day, next_year, next_hour, next_min);  // rbf
     rtc_set_alarm(&next_alarm, &set_next_alarm);
 }
 

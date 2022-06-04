@@ -24,6 +24,7 @@ extern int16_t year;
 extern double latitude, longitude;  // use atof() on these. float *should* be sufficient
 extern int north, east, gnss_fix;
 extern uint baud_rate;
+extern uint gnss_running;
 
 #endif
 
@@ -48,8 +49,7 @@ void uart_rx_setup(void);
 void compile_message(char *nmea_msg, char *raw_msg, char *checksum,
                      char *terminator);
 uint extract_baud_rate(char *string);
-void send_nmea(int testrun, int changing_baud);
-void send_ubx(int testrun);
+void config_gnss();
 void fire_nmea_msg(char *msg);
 void fire_ubx_msg(uint8_t *msg, size_t len);
 void wake_gnss(void);
