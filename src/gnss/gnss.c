@@ -2,8 +2,6 @@
 #include "../utils/utils.h"   // would be better to set the include path and just do utils/utils.h...
 
 
-uint lat_long_set = 0;
-
 void parse_buffer(char *buffer, char **sentences, int max_sentences) {
     /*
     split out the buffer into individual NMEA sentences
@@ -65,7 +63,11 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
     // long : [4]
     // ew   : [5]  ('E' or 'W')
     *gnss_fix = atoi(gga_msg[6]);
-    if (gnss_fix) {
+    if (gnss_fix && !latitude) {
+        // * nothing has been set yet and there is a gnss fix so the data are presumed valid.
+        // * the check for !latitude allows this function to be called after a sleep without
+        //   modifying the latitude and longitude data unnecessarily yet still relaying if
+        //   a gnss_fix has been found.
         *latitude = atof(gga_msg[2]);
         *north = (toupper(gga_msg[3][0]) == 'N') ? 1 : 0;
         *longitude = atof(gga_msg[4]);
@@ -74,7 +76,6 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
         to_decimal_degrees(latitude, north);
         to_decimal_degrees(longitude, east);
     }
-    lat_long_set = 1;  // flag for whether lat long data are set
 }
 
 void get_utc_offset(double longitude, int8_t *utc_offset) {
@@ -158,13 +159,12 @@ void on_uart_rx(void) {
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
             msg_type = 1;
-            valid = 1;  // run the below. temporarily false for testing VTG
+            valid = 1;
 		} else if (strstr(sentences[i], "ZDA")) {
 			num_fields = 10;  // 1 more
             msg_type = 2;
-            valid = 1;  // run the below. temporarily false for testing VTG
+            valid = 1;
 		} else {
-            msg_type = 0;  // not really necessary
             valid = 0;
         }
         if (valid && checksum_valid(sentences[i])) {
@@ -172,30 +172,16 @@ void on_uart_rx(void) {
             parse_line(sentences[i], fields, num_fields);
             if (msg_type == 1) {
                 // always parse this as it has the `gnss_fix` flag
-                if (!lat_long_set) {
-                    parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
-                    // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
-                }
-                if (rtc_running()) {
-                    // rtc is running and lat and long are set. shut down UART.
-                    gnss_deinit();
-                }
+                parse_gga(fields, &latitude, &north, &longitude, &east, &gnss_fix);
+                // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
             } else if (msg_type == 2 && gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                if (longitude) {
-                    get_utc_offset(longitude, &utc_offset);
-                    localize_datetime(&year, &month, &day, &hour, utc_offset);
-                    if (!rtc_running()) {
-                        set_onboard_rtc(year, month, day, hour, min, sec);
-                    } else {
-                        if (lat_long_set) {
-                            // rtc is running and lat and long are set. shut down UART.
-                            gnss_deinit();
-                        }
-                    }
-                }
-                // set_onboard_rtc(&year, &month, &day, &hour, &min, &sec, &utc_offset);
+                get_utc_offset(longitude, &utc_offset);
+                localize_datetime(&year, &month, &day, &hour, utc_offset);
+                set_onboard_rtc(year, month, day, hour, min, sec);
+                // rtc is running and lat and long are set by nature of gnss_fix=1. shut down UART.
+                gnss_deinit();
             } else {}
         }
 		i++;
@@ -205,19 +191,41 @@ void on_uart_rx(void) {
 
 void gnss_init(void) {
     // stdio_init_all();
-    uart_init(UART_ID, BAUD_RATE);
+    uart_init(UART_ID, baud_rate);
 
     uart_tx_setup();  // initialize UART Tx on the pico
 
-    send_nmea(0, 1);  // make changes to desired sentences and/or baud rate
+    wake_gnss();
+
+    int change_baud = baud_rate == 9600 ? 1 : 0;  // only change baud if it's 9600
+    send_nmea(0, change_baud);  // make changes to desired sentences and/or baud rate
     send_ubx(0);   // save the configurations to non-volatile mem on the chip.
 
     uart_rx_setup();
 }
 
 
+void wake_gnss(void) {
+    // put the GNSS module in `continuous` mode
+    printf("waking the gnss module...\n");  // rbf
+    uint8_t wake_msg[] = { 0xB5,0x62,0x06,0x11,0x02,0x00,0x08,0x00,0x21,0x91 };
+    fire_ubx_msg(wake_msg, sizeof(wake_msg));
+}
+
+
+void sleep_gnss(void) {
+    // put the GNSS module in `power save` mode
+    printf("sleeping the gnss module...\n");  // rbf
+    uint8_t wake_msg[] = { 0xB5,0x62,0x06,0x11,0x02,0x00,0x08,0x01,0x22,0x92 };
+    fire_ubx_msg(wake_msg, sizeof(wake_msg));
+}
+
+
 void gnss_deinit(void) {
     // printf("deinitializing uart!\n");  // rbf
+    // sleep the gnss module
+    gnss_fix = 0;    // important to force a reset for the next startup
+    sleep_gnss();
     // deinit uart
     uart_deinit(UART_ID);
     // disable IRQ
@@ -294,7 +302,7 @@ void compile_message(char *nmea_msg, char *raw_msg,
 }
 
 
-int extract_baud_rate(char *string) {
+uint extract_baud_rate(char *string) {
     // extract the new baud from the message
     // printf("extracting baud rate...\n");
     char *token;
@@ -307,16 +315,16 @@ int extract_baud_rate(char *string) {
 }
 
 void fire_ubx_msg(uint8_t *msg, size_t len) {
-    // printf("Firing UBX message...\n", msg);
-    for (int i=0; i<100; i++) {
+    // printf("Firing UBX message 5 times...\n", msg);
+    for (int i=0; i<5; i++) {
         uart_write_blocking(UART_ID, msg, len);
-        busy_wait_ms(i*10);  // rbf
+        busy_wait_ms(i*10);
     }
 }
 
 void fire_nmea_msg(char *msg) {
     // printf("Firing NMEA message: %s\n", msg);
-    for (int k = 0; k < 5; k++) {
+    for (int k=0; k<5; k++) {
         // send out the message multiple times. BAUD_RATE in particular needs this treatment.
         for (int i=0; i<strlen(msg); i++) {
             // write the message char by char.
@@ -341,7 +349,7 @@ void send_nmea(int testrun, int changing_baud) {
     char *enable_identifiers[] = { "GGA", "ZDA" };  // gets combined these with `enable` char array
 
     // this is a PUBX 41 message, no automated composition, just append this to the messages array as-is
-    char update_baud_rate[] = "$PUBX,41,1,3,3,115200,0*";  // update baud rate
+    char update_baud_rate[] = "$PUBX,41,1,3,3,115200,0*";  // update baud rate to 115200
     int num_disables = sizeof(disable_identifiers) / sizeof(disable_identifiers[0]);
     int num_enables = sizeof(enable_identifiers) / sizeof(enable_identifiers[0]);
     char *messages[num_enables + num_disables + changing_baud];
@@ -393,11 +401,10 @@ void send_nmea(int testrun, int changing_baud) {
             // and datetime from the incoming messages
             fire_nmea_msg(nmea_msg);
             if (strncmp(nmea_msg, update_baud_rate, 23) == 0) {
-                int new_baud;
-                new_baud = extract_baud_rate(update_baud_rate);
+                baud_rate = extract_baud_rate(update_baud_rate);
                 // update the pico's UART baud rate to the newly set value.
                 // printf("updating baud rate to %d\n", new_baud);
-                uart_set_baudrate(UART_ID, new_baud);
+                uart_set_baudrate(UART_ID, baud_rate);
             }
         }
     }

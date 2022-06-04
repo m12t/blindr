@@ -13,7 +13,6 @@
 
 // uart config
 #define UART_ID uart1
-#define BAUD_RATE 9600  // changes to 115200 after configuration
 #define DATA_BITS 8
 #define STOP_BITS 1
 #define PARITY UART_PARITY_NONE
@@ -24,6 +23,7 @@ extern int8_t sec, min, hour, day, month, utc_offset;
 extern int16_t year;
 extern double latitude, longitude;  // use atof() on these. float *should* be sufficient
 extern int north, east, gnss_fix;
+extern uint baud_rate;
 
 #endif
 
@@ -47,10 +47,10 @@ void uart_tx_setup(void);
 void uart_rx_setup(void);
 void compile_message(char *nmea_msg, char *raw_msg, char *checksum,
                      char *terminator);
-int extract_baud_rate(char *string);
+uint extract_baud_rate(char *string);
 void send_nmea(int testrun, int changing_baud);
 void send_ubx(int testrun);
 void fire_nmea_msg(char *msg);
 void fire_ubx_msg(uint8_t *msg, size_t len);
-
-
+void wake_gnss(void);
+void sleep_gnss(void);
