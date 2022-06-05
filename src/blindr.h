@@ -22,7 +22,6 @@ uint gnss_running = 0;  // flag to prevent a race condition in the main set_next
 int next_event = -1;
 uint baud_rate = 9600;  // default baud rate
 datetime_t now = {0};  // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
-uint gnss_found = 0;  // flag for if no gnss module is found, no alarms will be set and only the toggle switch will work
 uint gnss_read_successful = 0;
 uint consec_conn_failures = 0;  // counter that will disable the alarm cycle after n failed gnss connections
 

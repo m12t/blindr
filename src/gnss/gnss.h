@@ -18,14 +18,15 @@
 #define PARITY UART_PARITY_NONE
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
-#define len 256
+#define buffer_len 256
+#define sentences_len 8
 
 extern int8_t sec, min, hour, day, month, utc_offset;
 extern int16_t year;
 extern double latitude, longitude;  // use atof() on these. float *should* be sufficient
 extern int north, east, gnss_fix;
 extern uint baud_rate;
-extern uint gnss_running, gnss_found, gnss_read_successful;
+extern uint gnss_running, gnss_read_successful;
 
 #endif
 
@@ -41,7 +42,7 @@ void parse_gga(char **gga_msg, double *latitude, int *north,
                double *longitude, int *east, int *gnss_fix);
 void get_utc_offset(double longitude, int8_t *utc_offset);
 void gnss_init(void);
-void gnss_deinit(void);
+void gnss_deinit(int fully);
 
 // config functions
 int get_checksum(char *string);
@@ -56,4 +57,4 @@ void fire_ubx_msg(uint8_t *msg, size_t msg_len);
 void wake_gnss(void);
 void sleep_gnss(void);
 void abort_gnss_timeout(void);
-void manage_gnss_connection(void);
+int manage_gnss_connection(void);

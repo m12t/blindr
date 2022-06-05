@@ -17,9 +17,13 @@ int main(void) {
 
 void gnss_preinit(void) {
     gnss_init();
-    while (gnss_running) { busy_wait_ms(50); }
+    while (gnss_running) {
+        busy_wait_ms(50);
+    }
 
-    if (gnss_read_successful) { set_first_alarm(); }
+    if (gnss_read_successful) {
+        set_first_alarm();
+    }
 }
 
 void set_first_alarm(void) {
@@ -144,7 +148,9 @@ void set_next_alarm(void) {
     }
 
     gnss_init();  // get the latest accurate time from gnss data to recalibrate the onboard RTC
-    while (gnss_running) { busy_wait_ms(50); }
+    while (gnss_running) {
+        busy_wait_ms(50);
+    }
     if (!gnss_read_successful) {
         consec_conn_failures += 1;
 
@@ -167,8 +173,8 @@ void set_next_alarm(void) {
         .sec   = 00
     };
     if (consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
-        // printf("local time is: %d/%d/%d %d:%d:00\n", now.month, now.day, now.year, now.hour, now.min);  // rbf
-        // printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", month, day, year, hour, min);  // rbf
+        printf("local time is: %d/%d/%d %d:%d:00\n", now.month, now.day, now.year, now.hour, now.min);  // rbf
+        printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", month, day, year, hour, min);  // rbf
         rtc_set_alarm(&next_alarm, &set_next_alarm);
     }
 }

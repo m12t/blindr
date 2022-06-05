@@ -3,9 +3,9 @@
 
 
 // implement a ring buffer for the UART messages received
-uint pos = 0;
-char buffer[len];  // make a buffer of size `len` for the raw message
-char *sentences[16] = {NULL};
+uint buffer_pos = 0, sentences_pos = 0;
+char buffer[buffer_len];  // make a buffer of size `buffer_len` for the raw message
+char *sentences[sentences_len] = {NULL};
 
 
 void split_buffer(char *buffer, char **sentences, int max_sentences) {
@@ -24,12 +24,10 @@ void split_buffer(char *buffer, char **sentences, int max_sentences) {
     // printf("first valid index: %d\n", first_valid_index);
     eol = strtok(&buffer[first_valid_index], "\n\r");
     while (eol != NULL && i < max_sentences) {
-		sentences[i++] = eol;
+		sentences[sentences_pos++] = eol;
+        sentences_pos %= sentences_len;
         eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
-    }
-    if (i > 0) {
-        // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
-	    // sentences[i] = NULL;  // [i] or [i-1] ??
+        i++;
     }
     printf("parsed: %s\n", sentences[i]);
 }
@@ -161,12 +159,10 @@ int checksum_valid(char *string) {
 
 void parse_buffer() {
     // the buffer is full, extract its data
-    printf("parsing...\n");
+    // printf("parsing...\n");
     split_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));
-    printf("\nboef: %s\n", sentences[2]);
     int i=0, valid=0, msg_type = 0, num_fields=0;
 	while (sentences[i]) {
-        gnss_found = 1;
         // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         // printf("gnss fix: %d\n", gnss_fix);
         num_fields = 0;     // reset each iteration
@@ -203,7 +199,7 @@ void parse_buffer() {
                     printf("final lat long: %f, %f\n", latitude, longitude);  // rbf
                     printf("final time: %d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                     gnss_read_successful = 1;
-                    gnss_deinit();
+                    gnss_deinit(0);
                 }
             } else {}
         }
@@ -214,15 +210,15 @@ void parse_buffer() {
 
 // RX interrupt handler
 void on_uart_rx(void) {
+    uint8_t ch;
     while (uart_is_readable(UART_ID)) {
-        uint8_t ch = uart_getc(UART_ID);
-        buffer[pos] = ch;
-        pos %= len;  // ring buffer
-        if (pos++ == 255) {
-            pos %= len;
-            parse_buffer();
-        } else {
-            pos %= len;
+        if (ch = uart_getc(UART_ID)) {
+            printf("%c", ch);
+            buffer[buffer_pos++] = ch;
+            buffer_pos %= buffer_len;  // ring buffer
+            if (buffer_pos == 255) {
+                parse_buffer();
+            }
         }
     }
 }
@@ -230,53 +226,60 @@ void on_uart_rx(void) {
 
 void gnss_init(void) {
     gnss_running = 1;
-    gnss_found = 0;
     gnss_read_successful = 0;
+
     printf("initializing gnss\n");  // rbf
     if (!uart_is_enabled(UART_ID)) {
         uart_init(UART_ID, baud_rate);
     }
-    
+
     uart_tx_setup();  // initialize UART Tx on the pico
 
     wake_gnss();
     config_gnss();  // make changes to desired sentences and baud rate
 
     uart_rx_setup();
-    
+
     manage_gnss_connection();
 }
 
-void manage_gnss_connection(void) {
+int manage_gnss_connection(void) {
     // set an initial timeout for any signals on the specified UART port.
     // this is used to check for if the module is connected. If not, exit.
     // then, check for valid data for a longer timeout before eventually exiting.
     for (int i=0; i<500; i++) {  // 30 second timeout for whether or not a device is found
-        if (gnss_found) { break; }
+        if (buffer[0]) {  // see if anything was written  
+            break;
+        }
         sleep_ms(60);
     }
-    if (!gnss_found) {
-        printf("no gnss found\n");
-        gnss_deinit();
+    if (!buffer[0]) {
+        printf("no gnss found \n");
+        gnss_deinit(1);
+        return 0;
     }
 
-    for (int i=0; i<600; i++) {
+    for (int i=0; i<600; i++) {  // i < 600
         // 10 minute timeout on getting a position fix
-        if (gnss_read_successful) { break; }
+        if (gnss_read_successful) {
+            break;
+        }
         sleep_ms(1e3);
     }
     if (!gnss_read_successful) {
         // the connection timed out before a fix and therefore the gnss_deinit()
         // above was never reached. deinitialize the gnss here.
         printf("conn failed\n");
-        gnss_deinit();
+        gnss_deinit(0);
+        return 0;
     }
+    return 1;
 }
 
 
 void wake_gnss(void) {
     // put the GNSS module in `continuous` mode
-    // printf("waking the gnss module on baud: %d ...\n", baud_rate);  // rbf
+    printf("waking the gnss module on baud: %d ...\n", baud_rate);  // rbf
     uint8_t wake_msg[] = {  // power on
         0xB5,0x62,0x02,0x41,0x10,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x06,0x00,0x00,0x00,0x08,0x00,
@@ -304,7 +307,7 @@ void sleep_gnss(void) {
 }
 
 
-void gnss_deinit(void) {
+void gnss_deinit(int fully) {
     // sleep the gnss module
     printf("deinitializing gnss\n");
     // disable IRQ *before* sending the final messages because the
@@ -312,8 +315,11 @@ void gnss_deinit(void) {
     int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
     irq_set_enabled(UART_IRQ, false);
     sleep_gnss();
-    // deinit uart
-    // uart_deinit(UART_ID);
+
+    if (fully) {
+        // only fully deinitialize uart if there is no gnss at all.
+        uart_deinit(UART_ID);
+    }
 
     gnss_fix = 0;    // important to force a reset for the next startup
     gnss_running = 0;  // turn of the flag, freeing executing in set_next_alarm()
