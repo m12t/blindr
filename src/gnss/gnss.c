@@ -2,22 +2,36 @@
 #include "../utils/utils.h"   // would be better to set the include path and just do utils/utils.h...
 
 
-void parse_buffer(char *buffer, char **sentences, int max_sentences) {
+// implement a ring buffer for the UART messages received
+uint pos = 0;
+char buffer[len];  // make a buffer of size `len` for the raw message
+char *sentences[16] = {NULL};
+
+
+void split_buffer(char *buffer, char **sentences, int max_sentences) {
     /*
     split the monolithic buffer into discrete NMEA
     sentences which are terminated by <cr><lf> aka `\r\n`
     */
     int i = 0;
-    char *eol;  // end of line
-    eol = strtok(buffer, "\n\r");
+    int first_valid_index;
+    char *bol, *eol;  // beginning of line, end of line
+    // printf("full buffer: %s\n", buffer);
+    bol = strchr(buffer, '$');  // remove all chars from the last incomplete sentence
+    if (bol)
+        printf("char at fvi: %c\n", buffer[first_valid_index]);
+    // first_valid_index = (int)(bol - buffer);
+    // printf("first valid index: %d\n", first_valid_index);
+    eol = strtok(&buffer[first_valid_index], "\n\r");
     while (eol != NULL && i < max_sentences) {
 		sentences[i++] = eol;
         eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
     }
     if (i > 0) {
         // NULL out the last entered row as it can't be guaranteed to be complete due to strtok()
-	    sentences[i-1] = NULL;
+	    // sentences[i] = NULL;  // [i] or [i-1] ??
     }
+    printf("parsed: %s\n", sentences[i]);
 }
 
 void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec) {
@@ -91,6 +105,7 @@ void parse_line(char *string, char **fields, int num_fields) {
     while ((i < num_fields) && NULL != (string = strchr(string, ','))) {
         *string = '\0';
         fields[i++] = ++string;
+        // printf("string: %s\n", string);
     }
 }
 
@@ -144,16 +159,14 @@ int checksum_valid(char *string) {
 }
 
 
-// RX interrupt handler
-void on_uart_rx(void) {
-    size_t len = 256;
-    char buffer[len];  // make a buffer of size `len` for the raw message
-    char *sentences[16] = {NULL};
-    uart_read_blocking(UART_ID, buffer, len);  // read the message into the buffer
-    parse_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));
-
+void parse_buffer() {
+    // the buffer is full, extract its data
+    printf("parsing...\n");
+    split_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]));
+    printf("\nboef: %s\n", sentences[2]);
     int i=0, valid=0, msg_type = 0, num_fields=0;
 	while (sentences[i]) {
+        gnss_found = 1;
         // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         // printf("gnss fix: %d\n", gnss_fix);
         num_fields = 0;     // reset each iteration
@@ -178,7 +191,7 @@ void on_uart_rx(void) {
             } else if (msg_type == 2 && gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                // printf("%d:%d:%d\n", hour, min, sec);
+                // printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                 if (latitude && longitude && year && month && day && (day || hour || sec)) {
                     // last check the values are atleast nonzero.
                     // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
@@ -187,7 +200,9 @@ void on_uart_rx(void) {
                     localize_datetime(&year, &month, &day, &hour, utc_offset);
                     set_onboard_rtc(year, month, day, hour, min, sec);
                     // rtc is running and lat and long are set by nature of gnss_fix=1. shut down UART.
-                    // printf("final lat long: %f, %f\n", latitude, longitude);  // rbf
+                    printf("final lat long: %f, %f\n", latitude, longitude);  // rbf
+                    printf("final time: %d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
+                    gnss_read_successful = 1;
                     gnss_deinit();
                 }
             } else {}
@@ -196,19 +211,67 @@ void on_uart_rx(void) {
 	}
 }
 
+
+// RX interrupt handler
+void on_uart_rx(void) {
+    while (uart_is_readable(UART_ID)) {
+        uint8_t ch = uart_getc(UART_ID);
+        if (ch) {
+
+            buffer[pos] = ch;
+            pos %= len;  // ring buffer
+            if (pos++ == 255) {
+                pos %= len;
+                parse_buffer();
+            } else {
+                pos %= len;
+            }
+        }
+    }
+}
+
+
 void gnss_init(void) {
     gnss_running = 1;
-    // stdio_init_all();
+    gnss_found = 0;
+    gnss_read_successful = 0;
     printf("initializing gnss\n");  // rbf
-    gnss_running = 1;  // set a flag that gnss is running
     uart_init(UART_ID, baud_rate);
+    
     uart_tx_setup();  // initialize UART Tx on the pico
 
     wake_gnss();
-    busy_wait_ms(500);  // give the module a chance to boot before spamming config messages
     config_gnss();  // make changes to desired sentences and baud rate
 
     uart_rx_setup();
+    
+    manage_gnss_connection();
+}
+
+void manage_gnss_connection(void) {
+    // set an initial timeout for any signals on the specified UART port.
+    // this is used to check for if the module is connected. If not, exit.
+    // then, check for valid data for a longer timeout before eventually exiting.
+    for (int i=0; i<500; i++) {  // 30 second timeout for whether or not a device is found
+        if (gnss_found) { break; }
+        sleep_ms(60);
+    }
+    if (!gnss_found) {
+        printf("no gnss found\n");
+        gnss_deinit();
+    }
+
+    for (int i=0; i<600; i++) {
+        // 10 minute timeout on getting a position fix
+        if (gnss_read_successful) { break; }
+        sleep_ms(1e3);
+    }
+    if (!gnss_read_successful) {
+        // the connection timed out before a fix and therefore the gnss_deinit()
+        // above was never reached. deinitialize the gnss here.
+        printf("conn failed\n");
+        gnss_deinit();
+    }
 }
 
 
@@ -225,8 +288,8 @@ void wake_gnss(void) {
         0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x08,0x00,
         0x00,0x00,0x5D,0x4B
     };
-    busy_wait_ms(250);  // ensure that the module has had time to go to sleep
     fire_ubx_msg(wake_msg, sizeof(wake_msg));
+    busy_wait_ms(250);  // give the gnss chip a chance to wake before sending config messages
 }
 
 
@@ -238,6 +301,7 @@ void sleep_gnss(void) {
         0x02,0x00,0x00,0x00,0x4D,0x3B
     };
     fire_ubx_msg(sleep_msg, sizeof(sleep_msg));
+    busy_wait_ms(250);  // give the gnss chip a chance to enter low power mode
 }
 
 
@@ -247,8 +311,10 @@ void gnss_deinit(void) {
     sleep_gnss();
     // deinit uart
     uart_deinit(UART_ID);
-    // disable IRQ
-    irq_set_enabled(UART1_IRQ, false);
+    // disable IRQ *before* sending the final messages because the
+    // module will send out loads of spam
+    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    irq_set_enabled(UART_IRQ, false);
 
     gnss_fix = 0;    // important to force a reset for the next startup
     gnss_running = 0;  // turn of the flag, freeing executing in set_next_alarm()
@@ -294,7 +360,7 @@ void uart_tx_setup(void) {
 
     // Set our data format
     uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
-    uart_set_fifo_enabled(UART_ID, true);
+    uart_set_fifo_enabled(UART_ID, false);
 }
 
 
@@ -308,9 +374,9 @@ void uart_rx_setup(void) {
     // And set up and enable the interrupt handlers
     irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
     irq_set_enabled(UART_IRQ, true);
-
     // Now enable the UART to send interrupts - RX only
     uart_set_irq_enables(UART_ID, true, false);
+    // printf("done with rx setup\n");
 }
 
 
@@ -336,10 +402,10 @@ uint extract_baud_rate(char *string) {
     return atoi(token);
 }
 
-void fire_ubx_msg(uint8_t *msg, size_t len) {
+void fire_ubx_msg(uint8_t *msg, size_t msg_len) {
     // printf("Firing UBX message 5 times...\n", msg);
     for (int i=0; i<5; i++) {
-        uart_write_blocking(UART_ID, msg, len);
+        uart_write_blocking(UART_ID, msg, msg_len);
         busy_wait_ms(i*10);
     }
 }

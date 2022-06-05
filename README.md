@@ -20,7 +20,7 @@ Being an embedded system that will run 24/7, reliability and low power consumpti
 Some examples of this in action:
 1. The stepper and stepper driver board are put to sleep (no current flows to the motor or driver charge pump) whenever it's not actively running
 1. The main processing cores sleep indefinitely only to be woken up by toggle switch interrupts and RTC-based alarms for solar events
-1. Once the datetime data (from a NMEA ZDA sentence) and position data (from a NMEA GGA sentence) are captured, the GNSS module can be disconnected and used for other projects. Note, however, it is needed on each startup to set the Pico uC's onboard RTC
+1. The GNSS module is put in low power mode when it isn't needed
 
 
 ## User Interface

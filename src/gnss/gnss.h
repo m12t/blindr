@@ -18,18 +18,19 @@
 #define PARITY UART_PARITY_NONE
 #define UART_TX_PIN 4
 #define UART_RX_PIN 5
+#define len 256
 
 extern int8_t sec, min, hour, day, month, utc_offset;
 extern int16_t year;
 extern double latitude, longitude;  // use atof() on these. float *should* be sufficient
 extern int north, east, gnss_fix;
 extern uint baud_rate;
-extern uint gnss_running;
+extern uint gnss_running, gnss_found, gnss_read_successful;
 
 #endif
 
-
-void parse_buffer(char *buffer, char **sentences, int max_sentences);
+void parse_buffer();
+void split_buffer(char *buffer, char **sentences, int max_sentences);
 void parse_line(char *string, char **fields, int num_fields);
 int checksum_valid(char *string);
 int hex2int(char *c);
@@ -51,6 +52,8 @@ void compile_message(char *nmea_msg, char *raw_msg, char *checksum,
 uint extract_baud_rate(char *string);
 void config_gnss();
 void fire_nmea_msg(char *msg);
-void fire_ubx_msg(uint8_t *msg, size_t len);
+void fire_ubx_msg(uint8_t *msg, size_t msg_len);
 void wake_gnss(void);
 void sleep_gnss(void);
+void abort_gnss_timeout(void);
+void manage_gnss_connection(void);
