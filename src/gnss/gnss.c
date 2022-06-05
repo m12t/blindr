@@ -216,16 +216,13 @@ void parse_buffer() {
 void on_uart_rx(void) {
     while (uart_is_readable(UART_ID)) {
         uint8_t ch = uart_getc(UART_ID);
-        if (ch) {
-
-            buffer[pos] = ch;
-            pos %= len;  // ring buffer
-            if (pos++ == 255) {
-                pos %= len;
-                parse_buffer();
-            } else {
-                pos %= len;
-            }
+        buffer[pos] = ch;
+        pos %= len;  // ring buffer
+        if (pos++ == 255) {
+            pos %= len;
+            parse_buffer();
+        } else {
+            pos %= len;
         }
     }
 }
@@ -236,7 +233,9 @@ void gnss_init(void) {
     gnss_found = 0;
     gnss_read_successful = 0;
     printf("initializing gnss\n");  // rbf
-    uart_init(UART_ID, baud_rate);
+    if (!uart_is_enabled(UART_ID)) {
+        uart_init(UART_ID, baud_rate);
+    }
     
     uart_tx_setup();  // initialize UART Tx on the pico
 
@@ -308,13 +307,13 @@ void sleep_gnss(void) {
 void gnss_deinit(void) {
     // sleep the gnss module
     printf("deinitializing gnss\n");
-    sleep_gnss();
-    // deinit uart
-    uart_deinit(UART_ID);
     // disable IRQ *before* sending the final messages because the
     // module will send out loads of spam
     int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
     irq_set_enabled(UART_IRQ, false);
+    sleep_gnss();
+    // deinit uart
+    // uart_deinit(UART_ID);
 
     gnss_fix = 0;    // important to force a reset for the next startup
     gnss_running = 0;  // turn of the flag, freeing executing in set_next_alarm()
