@@ -7,7 +7,10 @@ int main(void) {
 
     stepper_init();
     toggle_init(&toggle_callback);
-    gnss_preinit();
+    gnss_init();
+    int gnss_success = manage_gnss_connection();
+    if (gnss_success)
+        set_first_alarm();
 
     while (1) {
         // keep the program alive indefinitely
@@ -15,22 +18,35 @@ int main(void) {
     }
 }
 
-void gnss_preinit(void) {
-    gnss_init();
-    while (gnss_running) {
-        busy_wait_ms(50);
-    }
 
-    if (gnss_read_successful) {
-        set_first_alarm();
+
+int manage_gnss_connection(void) {
+    printf("mg1\n");
+    for (int i=0; i<15; i++) {
+        if (gnss_read_successful) {
+            break;
+        }
+        busy_wait_ms(1000);
     }
+    if (!gnss_read_successful) {
+        gnss_configured = 0;
+        // the connection timed out before a fix and therefore the gnss_deinit()
+        // above was never reached. deinitialize the gnss here.
+        printf("conn failed\n");
+        gnss_deinit(0);
+        return 0;
+    } else {
+        gnss_configured = 1;
+        printf("successfully read gnss\n");
+    }
+    return 1;
 }
+
 
 void set_first_alarm(void) {
     // this function is similar to set_next_alarm() except the way it finds the next
     // event is different (it compares times instad of going off `next_event`). It
     // also doesn't initialize the GNSS again as that was just done moments prior.
-    printf("read must have succeeded...\n");
     int16_t year;
     int8_t month, day, dotw, hour, min;
 
@@ -77,18 +93,38 @@ void set_first_alarm(void) {
         min = rise_minute;
     }
 
-    datetime_t first_alarm = {
-        .year  = year,
-        .month = month,
-        .day   = day,
-        .dotw  = dotw,
-        .hour  = hour,
+    // datetime_t first_alarm = {  // the `real` version
+    //     .year  = year,
+    //     .month = month,
+    //     .day   = day,
+    //     .dotw  = dotw,
+    //     .hour  = hour,
+    //     .min   = min,
+    //     .sec   = 00,
+    // };
+
+    int sleep_time = 4;
+    if (now.sec + sleep_time > 59) {  // for debugging only
+        min = now.min + 1;
+        sec = (now.sec + sleep_time) % 60;
+    } else {
+        min = now.min;
+        sec = now.sec + sleep_time;
+    }
+    datetime_t first_alarm = {  // for debugging multiple alarm cycles
+        .year  = now.year,
+        .month = now.month,
+        .day   = now.day,
+        .dotw  = now.dotw,
+        .hour  = now.hour,
         .min   = min,
-        .sec   = 00
+        .sec   = sec,
     };
 
     rtc_set_alarm(&first_alarm, &set_next_alarm);
-    printf("setting the first alarm for: %d/%d/%d %d:%d:00\n", month, day, year, hour, min);  // rbf
+    printf("setting the first alarm for: %d/%d/%d %d:%d:%d\n",
+           first_alarm.month, first_alarm.day, first_alarm.year,
+           first_alarm.hour, first_alarm.min, first_alarm.sec);  // rbf
 
 }
 
@@ -98,6 +134,7 @@ void set_next_alarm(void) {
 
     int16_t year, tomorrow_year=now.year;
     int8_t month, day, dotw, hour, min, tomorrow_month=now.month, tomorrow_day=now.day;
+
 
     rtc_get_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -147,11 +184,9 @@ void set_next_alarm(void) {
 
     }
 
-    gnss_init();  // get the latest accurate time from gnss data to recalibrate the onboard RTC
-    while (gnss_running) {
-        busy_wait_ms(50);
-    }
-    if (!gnss_read_successful) {
+    gnss_init();
+    int init_success = manage_gnss_connection();
+    if (!init_success) {
         consec_conn_failures += 1;
 
         next_event = -1;  // invalid
@@ -161,20 +196,41 @@ void set_next_alarm(void) {
         dotw = tomorrow_dotw,
         hour = rise_hour;
         min = rise_minute;
+    } else {
+        printf("gnss init successful on repeat alarm!\n");
     }
 
-    datetime_t next_alarm = {
-        .year  = year,
-        .month = month,
-        .day   = day,
-        .dotw  = dotw,
-        .hour  = hour,
+    // datetime_t next_alarm = {  // the `real` version
+    //     .year  = year,
+    //     .month = month,
+    //     .day   = day,
+    //     .dotw  = dotw,
+    //     .hour  = hour,
+    //     .min   = min,
+    //     .sec   = 00
+    // };
+    int sleep_time = 10;
+    if (now.sec + sleep_time > 59) {  // for debugging only
+        min = now.min + 1;
+        sec = (now.sec + sleep_time) % 60;
+    } else {
+        min = now.min;
+        sec = now.sec + sleep_time;
+    }
+    datetime_t next_alarm = {  // for debugging multiple alarm cycles
+        .year  = now.year,
+        .month = now.month,
+        .day   = now.day,
+        .dotw  = now.dotw,
+        .hour  = now.hour,
         .min   = min,
-        .sec   = 00
+        .sec   = sec
     };
+
     if (consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
-        printf("local time is: %d/%d/%d %d:%d:00\n", now.month, now.day, now.year, now.hour, now.min);  // rbf
-        printf("setting the next alarm for: %d/%d/%d %d:%d:00\n", month, day, year, hour, min);  // rbf
+        printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
+        printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
+               next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
         rtc_set_alarm(&next_alarm, &set_next_alarm);
     }
 }

@@ -3,12 +3,26 @@
 
 CURRENT TASK:
 
+1. refactor to use DMA to write GNSS data instead of dedicating an entire core.
+data flow:
+✅ uart_received_IRQ ->  {this isn't actually firing during the busy wait... need to use PIO to listen}
+✅ on_uart_rx() ->
+3. write to DMA buffer ->
+4. buffer_full_irq ->
+5. parse_buffer ->
+6. write to DMA sentences[] pointer array ->
+7. [either set a flag that gets caught by the timeout loop | process it directly by calling parse_buffer()]
 
+dma channels needed:
+1. raw uart data -> raw `buffer[]`
+2. parsed data -> parsed `sentences[]`
+
+// be sure to unclaim dma channels on deinit.
 
 
 REMAINING TASKS:
 ------------------------------------------------------------------------------
-allow for a mode that runs without gnss/uart on startup (implement a timeout on listening on uart??? if uart isn't found within 2 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
+
 
 
 POTENTIAL FUTURE VERISON FEATURES:
@@ -87,4 +101,4 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...
 ✅ perform integration testing with the stepper ... install the components.
 ✅ add the ability to power on/off gnss module and send configuratioins to it
     > wake it every week or so to ensure the onboard RTC stays accurate.
-
+✅ allow for a mode that runs without gnss/uart on startup (implement a timeout on listening on uart??? if uart isn't found within 2 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.
