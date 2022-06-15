@@ -40,6 +40,7 @@ good_stop:              ; No delay before returning to start; a little slack is
 
 static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
+    // pio_sm_set_in_pins(pio, sm, pin);  // test this instead of above (might require sm_config not just pio)
     pio_gpio_init(pio, pin);
     gpio_pull_up(pin);
 
@@ -57,6 +58,14 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
     
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void uart_rx_program_deinit(PIO pio, uint sm) {
+    printf("static inline void uart_rx_program_deinit deinitializing...\n");  // rbf
+    pio_sm_set_enabled(pio, sm, false);  // disable the pio state machine
+    if (pio_sm_is_claimed(pio, sm)) {
+        pio_sm_unclaim(pio, sm);             // unclaim the pio state machine
+    }
 }
 
 %}

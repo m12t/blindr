@@ -37,8 +37,9 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
                            double *longitude, uint *north, uint *east, int16_t *year,
                            int8_t *month, int8_t *day, int8_t *hour, int8_t *min, int8_t *sec,
                            int8_t *utc_offset, uint *gnss_fix, uint *gnss_running,
-                           uint *gnss_read_successful, uint *gnss_configured, uint time_only);
-void gnss_deinit(uint *gnss_fix, uint *gnss_running);
+                           uint *gnss_read_successful, uint *gnss_configured, uint time_only,
+                           PIO pio, uint sm, uint offset);
+void gnss_deinit(uint *gnss_fix, uint *gnss_running, PIO pio, uint sm, uint offset);
 void gnss_dma_init(char *buffer, uint32_t transfer_count);
 void gnss_dma_deinit(void);
 void gnss_uart_tx_init(uint baud_rate);
@@ -49,7 +50,8 @@ void gnss_uart_deinit(void);
 void parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
                   uint *north, uint *east, int16_t *year, int8_t *month, int8_t *day,
                   int8_t *hour, int8_t *min, int8_t *sec, int8_t *utc_offset, uint *gnss_fix,
-                  uint *gnss_running, uint *gnss_read_successful, uint time_only);
+                  uint *gnss_running, uint *gnss_read_successful, uint time_only, PIO pio,
+                  uint sm, uint offset);
 void split_buffer(char *buffer, char **sentences, int max_sentences, uint *sentences_pos);
 void parse_line(char *string, char **fields, int num_fields);
 void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec);
