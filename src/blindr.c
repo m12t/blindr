@@ -1,5 +1,21 @@
 #include "blindr.h"
 
+uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
+int boundary_low=0, boundary_high=0, midpoint=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
+int8_t sec, min, hour, day, month, rise_hour, rise_minute, set_hour, set_minute, utc_offset;
+int16_t year;
+double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
+int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
+uint gnss_running = 0;  // flag to prevent a race condition in the main set_next_alarm()
+uint gnss_read_successful=0, gnss_configured=0;
+
+int next_event = -1;
+int automation_enabled=1;  // flag useful for whether or not to operate the blinds automatically.
+
+uint baud_rate = 9600;  // default baud rate
+datetime_t now = { 0 };  // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
+uint consec_conn_failures = 0;  // counter that will disable the alarm cycle after n failed gnss connections
+
 
 int main(void) {
     stdio_init_all();  // rbf - used for debugging
@@ -7,39 +23,25 @@ int main(void) {
 
     stepper_init();
     toggle_init(&toggle_callback);
-    gnss_init();
-    int gnss_success = manage_gnss_connection();
-    if (gnss_success)
+    uint config_gnss = 1;
+    uint new_baud = 115200;
+    uint time_only = 0;
+    uint transfer_count = 1e8;
+    gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
+              &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
+
+    // while (gnss_running) {  // is this necessary?? is gnss_init() blocking or does that use another core?
+    //     printf("blindr main running...\n");  // rbf - used to determine if gnss_init() is blocking.
+    //     // if it isn't blocking, might want to use multicore to make it blocking.
+    //     sleep_ms(10);
+    // }
+    if (gnss_read_successful)
         set_first_alarm();
 
     while (1) {
         // keep the program alive indefinitely
         tight_loop_contents();
     }
-}
-
-
-
-int manage_gnss_connection(void) {
-    printf("mg1\n");
-    for (int i=0; i<15; i++) {
-        if (gnss_read_successful) {
-            break;
-        }
-        busy_wait_ms(1000);
-    }
-    if (!gnss_read_successful) {
-        gnss_configured = 0;
-        // the connection timed out before a fix and therefore the gnss_deinit()
-        // above was never reached. deinitialize the gnss here.
-        printf("conn failed\n");
-        gnss_deinit(0);
-        return 0;
-    } else {
-        gnss_configured = 1;
-        printf("successfully read gnss\n");
-    }
-    return 1;
 }
 
 
@@ -52,7 +54,7 @@ void set_first_alarm(void) {
 
     // todo: check for the timeout counter, cancel it if needed.
 
-    rtc_get_datetime(&now);
+    utils_get_rtc_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                            now.year, now.month, now.day, utc_offset, latitude, longitude);
 
@@ -121,11 +123,10 @@ void set_first_alarm(void) {
         .sec   = sec,
     };
 
-    rtc_set_alarm(&first_alarm, &set_next_alarm);
+    utils_set_rtc_alarm(&first_alarm, &set_next_alarm);
     printf("setting the first alarm for: %d/%d/%d %d:%d:%d\n",
            first_alarm.month, first_alarm.day, first_alarm.year,
            first_alarm.hour, first_alarm.min, first_alarm.sec);  // rbf
-
 }
 
 
@@ -134,7 +135,6 @@ void set_next_alarm(void) {
 
     int16_t year, tomorrow_year=now.year;
     int8_t month, day, dotw, hour, min, tomorrow_month=now.month, tomorrow_day=now.day;
-
 
     rtc_get_datetime(&now);
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -147,7 +147,7 @@ void set_next_alarm(void) {
     int8_t tomorrow_dotw = get_dotw(tomorrow_year, tomorrow_month, tomorrow_day);
 
     if (next_event == 1) {
-        step_to_position(&current_position, MIDPOINT, BOUNDARY_HIGH);  // open the blinds
+        step_to_position(&current_position, midpoint, boundary_high);  // open the blinds
         next_event = 0;  // next alarm will be sunset
         year = now.year;
         month = now.month;
@@ -156,7 +156,7 @@ void set_next_alarm(void) {
         hour = set_hour;
         min = set_minute;
     } else if (next_event == 0) {
-        step_to_position(&current_position, 0, BOUNDARY_HIGH);  // close the blinds
+        step_to_position(&current_position, 0, boundary_high);  // close the blinds
         // the next event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                tomorrow_year, tomorrow_month, tomorrow_day, utc_offset,
@@ -184,10 +184,19 @@ void set_next_alarm(void) {
 
     }
 
-    gnss_init();
-    int init_success = manage_gnss_connection();
-    if (!init_success) {
+    uint config_gnss = 0;
+    uint new_baud = -1;
+    uint time_only = 1;
+    uint transfer_count = 1024;
+    gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
+              &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
+    while (gnss_running) {
+        printf("running... (from inside set_next_alarm()\n");
+        sleep_ms(100);
+    }
+    if (!gnss_read_successful) {
         consec_conn_failures += 1;
+        // if (!gnss_configured)  // if some signals were received but no valid fix, reconfig on next iteration and increase the transfer_count.
 
         next_event = -1;  // invalid
         year = tomorrow_year;
@@ -231,7 +240,7 @@ void set_next_alarm(void) {
         printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
                next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
-        rtc_set_alarm(&next_alarm, &set_next_alarm);
+        utils_set_rtc_alarm(&next_alarm, &set_next_alarm);
     }
 }
 
@@ -262,14 +271,14 @@ void normalize_boundaries(void) {
     printf("normalizing...\n");  // rbf
     printf("current pos before: %d\n", current_position);  // rbf
     printf("--------------\n");  // rbf
-    current_position += abs(BOUNDARY_LOW);
-    BOUNDARY_HIGH += abs(BOUNDARY_LOW);
-    BOUNDARY_LOW += abs(BOUNDARY_LOW);  // must do this *after* other shifts
-    MIDPOINT = (BOUNDARY_HIGH - BOUNDARY_LOW) / 2;
-    printf("new low boundary: %d\n", BOUNDARY_LOW);  // rbf
-    printf("new high boundary: %d\n", BOUNDARY_HIGH);  // rbf
+    current_position += abs(boundary_low);
+    boundary_high += abs(boundary_low);
+    boundary_low += abs(boundary_low);  // must do this *after* other shifts
+    midpoint = (boundary_high - boundary_low) / 2;
+    printf("new low boundary: %d\n", boundary_low);  // rbf
+    printf("new high boundary: %d\n", boundary_high);  // rbf
     printf("current pos after: %d\n", current_position);  // rbf
-    printf("middy: %d\n", MIDPOINT);  // rbf
+    printf("middy: %d\n", midpoint);  // rbf
 
 }
 
@@ -290,13 +299,13 @@ void find_boundary(uint gpio) {
     sleep_stepper();
     // update the respective boundary
     if (stepped && dir == 0) {
-        BOUNDARY_HIGH = current_position;
+        boundary_high = current_position;
         high_boundary_set = 1;
-        // printf("Upper boundary found: %d\n", BOUNDARY_HIGH);  // rbf
+        // printf("Upper boundary found: %d\n", boundary_high);  // rbf
     } else if (stepped && dir == 1) {
-        BOUNDARY_LOW = current_position;
+        boundary_low = current_position;
         low_boundary_set = 1;
-        // printf("Lower boundary found: %d\n", BOUNDARY_LOW);  // rbf
+        // printf("Lower boundary found: %d\n", boundary_low);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
@@ -314,7 +323,7 @@ void toggle_callback(uint gpio, uint32_t event) {
         if (!low_boundary_set || !high_boundary_set) {
             find_boundary(gpio);
         } else {
-            step_indefinitely(&current_position, BOUNDARY_HIGH, gpio);
+            step_indefinitely(&current_position, boundary_high, gpio);
         }
         // by now we're done with the falling action whether it's because
         // we reached a boundary of the blinds or because of a rising edge.

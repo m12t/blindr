@@ -1,17 +1,10 @@
-add_executable(gnss)
+file(GLOB FILES *.c *.h *.pio)
 
+add_library(gnss ${FILES})
 pico_generate_pio_header(gnss ${CMAKE_CURRENT_LIST_DIR}/gnss.pio)
-
 target_sources(gnss PRIVATE gnss.c)
 
-target_link_libraries(gnss PRIVATE
-        pico_stdlib
-        pico_multicore
-        hardware_pio
-        hardware_dma
-        )
+target_link_libraries(gnss pico_stdlib hardware_uart hardware_dma hardware_pio utils)
 
-pico_add_extra_outputs(gnss)
+target_include_directories(gnss PUBLIC .)
 
-# add url via pico_set_program_url
-example_auto_set_url(gnss)

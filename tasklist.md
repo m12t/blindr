@@ -3,19 +3,18 @@
 
 CURRENT TASK:
 
-1. refactor to use DMA to write GNSS data instead of dedicating an entire core.
-data flow:
-✅ uart_received_IRQ ->  {this isn't actually firing during the busy wait... need to use PIO to listen}
-✅ on_uart_rx() ->
-3. write to DMA buffer ->
-4. buffer_full_irq ->
-5. parse_buffer ->
-6. write to DMA sentences[] pointer array ->
-7. [either set a flag that gets caught by the timeout loop | process it directly by calling parse_buffer()]
-
-dma channels needed:
-1. raw uart data -> raw `buffer[]`
-2. parsed data -> parsed `sentences[]`
+updates process flow for gnss uart via DMA:
+blindr
+    main
+    -> gnss
+gnss
+    gnss_init()
+        uart_init()
+        dma_init()
+    manage_connection()
+        if (buffer)
+            parse()
+        busy_wait_ms(100)
 
 // be sure to unclaim dma channels on deinit.
 
@@ -23,7 +22,8 @@ dma channels needed:
 REMAINING TASKS:
 ------------------------------------------------------------------------------
 
-
+✅ be able to dynamically create a change baud rate pub41 message
+// signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.
 
 POTENTIAL FUTURE VERISON FEATURES:
 ------------------------------------------------------------------------------
