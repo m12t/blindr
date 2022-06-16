@@ -7,4 +7,3 @@ target_sources(gnss PRIVATE gnss.c)
 target_link_libraries(gnss pico_stdlib hardware_uart hardware_dma hardware_pio utils)
 
 target_include_directories(gnss PUBLIC .)
-
