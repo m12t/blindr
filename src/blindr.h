@@ -18,7 +18,8 @@ void find_boundary(uint gpio);
 void toggle_callback(uint gpio, uint32_t event);
 void disable_automation(void);
 void enable_automation(void);
-void set_next_alarm(void);
+int set_next_alarm(void);
 void set_first_alarm(void);
+void core1_entry(void);
 
 #endif

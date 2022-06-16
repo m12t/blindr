@@ -16,6 +16,8 @@ uint baud_rate = 9600;  // default baud rate
 datetime_t now = { 0 };  // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
 uint consec_conn_failures = 0;  // counter that will disable the alarm cycle after n failed gnss connections
 
+uint sleep = 1;
+
 
 int main(void) {
     stdio_init_all();  // rbf - used for debugging
@@ -23,25 +25,42 @@ int main(void) {
 
     stepper_init();
     toggle_init(&toggle_callback);
+    printf("bef1\n");
+
+    core1_entry();
+    printf("aft1\n");
+    sleep=0;
+    printf("bef2\n");
+    core1_entry();
+
+    printf("aft2\n");
+
+    // while (1) {
+    //     // keep the program alive indefinitely
+    //     if (sleep) {
+    //         sleep_ms(100);
+    //     } else {
+    //         sleep = 1;
+    //         sleep_ms(1000);
+    //         set_next_alarm();
+    //     }
+    // }
+}
+
+void alarm_callback(void) {
+    sleep = 0;
+}
+
+void core1_entry(void) {
+    printf("inside core 1\n");
     uint config_gnss = 1;
-    uint new_baud = 115200;
+    uint new_baud = 9600;
     uint time_only = 0;
-    uint transfer_count = 1e8;
+    uint32_t transfer_count = 1e8;
     gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
               &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
+    printf("just getting back now...\n");
 
-    // while (gnss_running) {  // is this necessary?? is gnss_init() blocking or does that use another core?
-    //     printf("blindr main running...\n");  // rbf - used to determine if gnss_init() is blocking.
-    //     // if it isn't blocking, might want to use multicore to make it blocking.
-    //     sleep_ms(10);
-    // }
-    if (gnss_read_successful)
-        set_first_alarm();
-
-    while (1) {
-        // keep the program alive indefinitely
-        tight_loop_contents();
-    }
 }
 
 
@@ -105,7 +124,7 @@ void set_first_alarm(void) {
     //     .sec   = 00,
     // };
 
-    int sleep_time = 4;
+    int sleep_time = 10;
     if (now.sec + sleep_time > 59) {  // for debugging only
         min = now.min + 1;
         sec = (now.sec + sleep_time) % 60;
@@ -123,14 +142,14 @@ void set_first_alarm(void) {
         .sec   = sec,
     };
 
-    utils_set_rtc_alarm(&first_alarm, &set_next_alarm);
+    // utils_set_rtc_alarm(&first_alarm, &alarm_callback);
     printf("setting the first alarm for: %d/%d/%d %d:%d:%d\n",
            first_alarm.month, first_alarm.day, first_alarm.year,
            first_alarm.hour, first_alarm.min, first_alarm.sec);  // rbf
 }
 
 
-void set_next_alarm(void) {
+int set_next_alarm(void) {
     // handle the current alarm/event and set the next one.
 
     int16_t year, tomorrow_year=now.year;
@@ -140,13 +159,13 @@ void set_next_alarm(void) {
     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                            now.year, now.month, now.day, utc_offset, latitude, longitude);
 
-    printf("rise %d:%d, set %d:%d\n", rise_hour, rise_minute, set_hour, set_minute);
+    // printf("rise %d:%d, set %d:%d\n", rise_hour, rise_minute, set_hour, set_minute);
 
     // get tomorrow's day, month, and even year
     today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
     int8_t tomorrow_dotw = get_dotw(tomorrow_year, tomorrow_month, tomorrow_day);
 
-    if (next_event == 1) {
+    if (next_event == 1) {  // it's a sunrise
         step_to_position(&current_position, midpoint, boundary_high);  // open the blinds
         next_event = 0;  // next alarm will be sunset
         year = now.year;
@@ -155,7 +174,7 @@ void set_next_alarm(void) {
         dotw = now.dotw,
         hour = set_hour;
         min = set_minute;
-    } else if (next_event == 0) {
+    } else if (next_event == 0) {  // it's a sunset
         step_to_position(&current_position, 0, boundary_high);  // close the blinds
         // the next event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -181,20 +200,17 @@ void set_next_alarm(void) {
         dotw = tomorrow_dotw,
         hour = rise_hour;
         min = rise_minute;
-
     }
 
-    uint config_gnss = 0;
-    uint new_baud = -1;
-    uint time_only = 1;
-    uint transfer_count = 1024;
+    uint config_gnss = 1;
+    uint new_baud = 115200;
+    uint time_only = 0;
+    uint32_t transfer_count = 1e8;
+    gnss_read_successful=0, gnss_fix=0, gnss_running=0;
     gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
               &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
-    while (gnss_running) {
-        printf("running... (from inside set_next_alarm()\n");
-        sleep_ms(100);
-    }
     if (!gnss_read_successful) {
+        printf("failed read!\n");
         consec_conn_failures += 1;
         // if (!gnss_configured)  // if some signals were received but no valid fix, reconfig on next iteration and increase the transfer_count.
 
@@ -205,7 +221,7 @@ void set_next_alarm(void) {
         dotw = tomorrow_dotw,
         hour = rise_hour;
         min = rise_minute;
-    } else {
+    } else {  // rbf
         printf("gnss init successful on repeat alarm!\n");
     }
 
@@ -218,6 +234,7 @@ void set_next_alarm(void) {
     //     .min   = min,
     //     .sec   = 00
     // };
+    rtc_get_datetime(&now);  // get the newly set time
     int sleep_time = 10;
     if (now.sec + sleep_time > 59) {  // for debugging only
         min = now.min + 1;
@@ -240,8 +257,11 @@ void set_next_alarm(void) {
         printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
                next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
-        utils_set_rtc_alarm(&next_alarm, &set_next_alarm);
+        utils_set_rtc_alarm(&next_alarm, &alarm_callback);
+    } else {
+        printf("max consec failures reached. No further alarms will be set\n");
     }
+    return 0;
 }
 
 

@@ -22,9 +22,12 @@ gnss
 REMAINING TASKS:
 ------------------------------------------------------------------------------
 
-✅ be able to dynamically create a change baud rate pub41 message
 1. signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.
-1. cancel pio and SM after use to clear for the next round. this solves the "\*\*\* PANIC \*\*\* No program space"
+✅ be able to dynamically create a change baud rate pub41 message<br>
+✅ cancel pio and SM after use to clear for the next round. this solves the "\*\*\* PANIC \*\*\* No program space"<br>
+1. free() buffer or buff_cpy()?? on new startup, buffer isn't transferring new data... debug this...
+
+
 
 POTENTIAL FUTURE VERISON FEATURES:
 ------------------------------------------------------------------------------

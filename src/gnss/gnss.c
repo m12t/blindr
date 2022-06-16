@@ -1,5 +1,6 @@
 #include "gnss.h"
 #include "gnss.pio.h"
+#include <inttypes.h>  // rbf - for printing uint32_t
 
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>> BEGIN INIT/DEINIT FUNCTIONS >>>>>>>>>>>>>>>>>>>>>>>>>>>> */
@@ -10,21 +11,22 @@ void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int
                uint transfer_count) {
     *gnss_running = 1;
     *gnss_read_successful = 0;  // reset this now so it can be evaluated after deinit() but gets reset before this next runthrough
-    static char buffer[BUFFER_LEN] __attribute__((aligned(BUFFER_LEN)));
-    static char *sentences[SENTENCES_LEN] = { NULL };
+    char buffer[BUFFER_LEN] __attribute__((aligned(BUFFER_LEN))) = { 0 };
+    char *sentences[SENTENCES_LEN] = { NULL };
 
     PIO pio = pio0;
     uint sm = 0;
     uint offset = pio_add_program(pio, &uart_rx_program);
 
     gnss_uart_tx_init(*baud_rate);
-    wake_gnss();
+    // wake_gnss();
 
     if (config_gnss) {
         configure_gnss(baud_rate, new_baud_rate);
     }
 
     uart_rx_program_init(pio, sm, offset, UART_RX_PIN, *baud_rate);
+
     gnss_dma_init(buffer, transfer_count);
     gnss_manage_connection(buffer, sentences, latitude, longitude, north, east, year,
                            month, day, hour, min, sec, utc_offset, gnss_fix, gnss_running,
@@ -43,6 +45,13 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
     char buffer_copy[BUFFER_LEN];
     for (int i=0; i<240; i++) {  // the main timeout loop of ~2 mins
         printf("--------------------------------\n");
+        if (dma_channel_is_busy(DMA_ID)) {
+            int32_t word = pio_sm_get(pio, sm);
+            printf("dma is busy...\n");
+            printf("word: %c\n", word);
+        } else {
+            printf("dma is free\n");
+        }
         busy_wait_ms(500);
         if (*gnss_read_successful) {
             *gnss_configured = 1;
@@ -72,7 +81,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
 
 void gnss_deinit(uint *gnss_fix, uint *gnss_running, PIO pio, uint sm, uint offset) {
     printf("deinitializing gnss\n");  // rbf
-    sleep_gnss();
+    // sleep_gnss();
     gnss_uart_deinit();
     gnss_dma_deinit();
 
@@ -86,6 +95,7 @@ void gnss_deinit(uint *gnss_fix, uint *gnss_running, PIO pio, uint sm, uint offs
 
 void gnss_dma_init(char *buffer, uint32_t transfer_count) {
     printf("initializing DMA\n");
+    dma_channel_claim(DMA_ID);
     dma_channel_config c = dma_channel_get_default_config(DMA_ID);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);  // test if DMA_SIZE_8 works here... plus simplification of uart_rx
     channel_config_set_read_increment(&c, false);    // read from the same spot (RX FIFO)
@@ -103,14 +113,19 @@ void gnss_dma_init(char *buffer, uint32_t transfer_count) {
         buffer,                // Write address (only need to set this once)
         &pio0->rxf,
         transfer_count,            // useful for a timeout
-        true
+        false
     );
+    dma_channel_start(DMA_ID);
 }
 
 
 void gnss_dma_deinit(void) {
     printf("deinitializing DMA\n");
+    if (dma_channel_is_busy(DMA_ID)) {
+        dma_channel_abort(DMA_ID);  // CRITICAL SO THE NEXT DMA CAN START UP SUCCESSFULLY
+    }
     if (dma_channel_is_claimed(DMA_ID)) {
+        printf("UNCLAIMING>>>\n");
         dma_channel_unclaim(DMA_ID);
     }
 }
@@ -120,13 +135,13 @@ void gnss_uart_tx_init(uint baud_rate) {
     printf("initializing UART\n");
     if (!uart_is_enabled(UART_ID)) {
         uart_init(UART_ID, baud_rate);
-    }
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+        gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
 
-    // // Set our data format
-    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
-    uart_set_fifo_enabled(UART_ID, true);  // enabled by default but this helps the readability
-    uart_getc(UART_ID);  // clear one junk value... needed?
+        // // Set our data format
+        uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
+        uart_set_fifo_enabled(UART_ID, false);  // enabled by default but this helps the readability
+        // uart_getc(UART_ID);  // clear one junk value... needed?
+    }
 }
 
 
@@ -407,13 +422,13 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
     uint num_enables = sizeof(enable_identifiers) / sizeof(enable_identifiers[0]);
     char *messages[num_enables + num_disables + (new_baud_rate > 0)];  // +1 if the baud needs to be updated
 
-    printf("Firing NMEA messages:\n----------------------\n\n");
+    // printf("Firing NMEA messages:\n----------------------\n\n");
 
     if (new_baud_rate > 0) {  // new_baud_rate of -1 is used to ignore this and not update the baud
         char update_baud_rate[32];  // to be populated
         build_baud_msg(update_baud_rate, new_baud_rate);
         messages[msg_count++] = strdup(update_baud_rate);
-        printf("update baud message: %s\n", update_baud_rate);
+        // printf("update baud message: %s\n", update_baud_rate);
     }
 
     // construct the disabling messages
@@ -450,9 +465,9 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
         compile_message(nmea_msg, messages[i], checksum, msg_terminator);  // assemble the components into the final msg
 
         fire_nmea_msg(nmea_msg);
-        printf("%s\n", nmea_msg);
+        // printf("%s\n", nmea_msg);
         if ((new_baud_rate != *baud_rate) && new_baud_rate > 0) {
-            printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
+            // printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
             uart_set_baudrate(UART_ID, new_baud_rate);
             *baud_rate = new_baud_rate;  // update the global baud
         }
@@ -481,7 +496,7 @@ void build_baud_msg(char *msg, uint new_baud) {
     strcat(msg, update_baud_prefix);
     strcat(msg, new_baud_buff);
     strcat(msg, update_baud_suffix);
-    printf("built the new baud message: %s\n", msg);  // rbf
+    // printf("built the new baud message: %s\n", msg);  // rbf
 }
 
 
