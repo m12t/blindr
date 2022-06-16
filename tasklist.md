@@ -25,7 +25,9 @@ REMAINING TASKS:
 1. signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.
 ✅ be able to dynamically create a change baud rate pub41 message<br>
 ✅ cancel pio and SM after use to clear for the next round. this solves the "\*\*\* PANIC \*\*\* No program space"<br>
-1. free() buffer or buff_cpy()?? on new startup, buffer isn't transferring new data... debug this...
+
+✅ debugged failed gnss read after once successful read. This was the sleep/wake_gnss() sequence (dig more into this -- use gnss_config.). NOTE: multicore worked, but wasn't necessary, the code works without multicore as the gnss functions are blocking.
+
 
 
 
