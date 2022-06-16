@@ -7,8 +7,6 @@
 #include "toggle.h"
 #include "solar.h"
 
-#include "pico/multicore.h"
-
 #define MAX_CONSEC_CONN_FAILURES 3
 
 

@@ -27,16 +27,11 @@ int main(void) {
     toggle_init(&toggle_callback);
     printf("bef1\n");
 
-    // multicore_lockout_victim_init();
-    multicore_launch_core1(core1_entry);
-    sleep_ms(30000);
-    multicore_reset_core1();
+    core1_entry();
     printf("aft1\n");
     sleep=0;
     printf("bef2\n");
-    multicore_launch_core1(core1_entry);
-    sleep_ms(30000);
-    multicore_reset_core1();
+    core1_entry();
 
     printf("aft2\n");
 
@@ -58,7 +53,6 @@ void alarm_callback(void) {
 
 void core1_entry(void) {
     printf("inside core 1\n");
-    // multicore_lockout_start_blocking();
     uint config_gnss = 1;
     uint new_baud = 9600;
     uint time_only = 0;
@@ -66,7 +60,6 @@ void core1_entry(void) {
     gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
               &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
     printf("just getting back now...\n");
-    // multicore_lockout_end_blocking();
 
 }
 
