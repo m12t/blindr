@@ -17,8 +17,8 @@ int main(void) {
     int solar_event = -1;       // flag for what the next solar_event is: 0=sunset, 1=sunrise, -1=NULL/Invalid
 
     // -------------------------------- initialize the stepper and toggle switch --------------------------------
-    stdio_init_all();  // rbf - used for debugging
-    printf("blindr initializing...\n");
+    // stdio_init_all();  // rbf - used for debugging
+    // printf("blindr initializing...\n");
     stepper_init();
     toggle_init(&toggle_callback);
 
@@ -118,11 +118,11 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     if (gnss_read_successful) {
         *time_only = 1;  // now that the first runthrough has gathered lat/long, idempotently set time_only to true for future requests.
         *config_gnss = 0;
-        printf("good read\n");
+        // printf("good read\n");
     } else {
         // * the read failed. reset UART baud to the gnss module's
         //   default and set the flag to run the configuration on the module
-        printf("unsuccessful read\n");
+        // printf("unsuccessful read\n");
         consec_conn_failures += 1;
         *config_gnss = 1;
         *baud_rate = 9600;  // reset the starting baud to default so the config messages work
@@ -138,7 +138,6 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     int8_t dotw = now.dotw;
     int8_t hour = now.hour;
     int8_t min = now.min;
-    int8_t sec = 0;  // rbf.. only used when setting <1m alarms for testing.
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
 
     if (*solar_event == 1) {  // it's a sunrise right now
@@ -199,33 +198,12 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         .sec   = 00
     };
 
-    // /* ---------------- all the below can be deleted after testing ----------------  */
-    // int sleep_time = 10;
-    // if (now.sec + sleep_time > 59) {  // for debugging only
-    //     min = now.min + 1;
-    //     sec = (now.sec + sleep_time) % 60;
-    // } else {
-    //     min = now.min;
-    //     sec = now.sec + sleep_time;
-    // }
-    // datetime_t next_alarm = {  // for debugging multiple alarm cycles
-    //     .year  = now.year,
-    //     .month = now.month,
-    //     .day   = now.day,
-    //     .dotw  = now.dotw,
-    //     .hour  = now.hour,
-    //     .min   = min,
-    //     .sec   = sec
-    // };
-    // /* ---------------- all the above can be deleted after testing ---------------- */
-
-    if (*consec_conn_failures >= MAX_CONSEC_CONN_FAILURES) {
-        printf("max consec failures reached. No further alarms will be set\n");
-    } else {
+    if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
+        // set the next alarm. else abort alarm sequence.
         utils_set_rtc_alarm(&next_alarm, &alarm_callback);
-        printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
-        printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
-            next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
+        // printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
+        // printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
+        //     next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
     }
 }
 
@@ -251,21 +229,20 @@ void set_automation_state(void) {
 
 void normalize_boundaries(void) {
     // set low boundary to 0
-    printf("normalizing...\n");  // rbf
-    printf("current pos before: %d\n", current_position);  // rbf
-    printf("--------------\n");  // rbf
+    // printf("normalizing...\n");  // rbf
+    // printf("current pos before: %d\n", current_position);  // rbf
+    // printf("--------------\n");  // rbf
     current_position += abs(boundary_low);
     boundary_high += abs(boundary_low);
     boundary_low += abs(boundary_low);  // must do this *after* other shifts
-    printf("new low boundary: %d\n", boundary_low);  // rbf
-    printf("new high boundary: %d\n", boundary_high);  // rbf
-    printf("current pos after: %d\n", current_position);  // rbf
-
+    // printf("new low boundary: %d\n", boundary_low);  // rbf
+    // printf("new high boundary: %d\n", boundary_high);  // rbf
+    // printf("current pos after: %d\n", current_position);  // rbf
 }
 
 
 void find_boundary(uint gpio) {
-    printf("finding boundary\n");
+    // printf("finding boundary\n");
     // wait for down toggle
     // busy_wait_ms(100);  // combar switch bounce  -- not needed now that main loop has a delay
     int stepped = 0;
@@ -274,7 +251,7 @@ void find_boundary(uint gpio) {
     // printf("dir: %d\n", dir);
     wake_stepper();
     while (gpio_get(gpio) == 0) {
-        printf("stepping\n");
+        // printf("stepping\n");
         // while the switch is still pressed
         single_step(&current_position, dir, 1500);
         stepped = 1;
@@ -282,19 +259,19 @@ void find_boundary(uint gpio) {
     sleep_stepper();
     // update the respective boundary
     if (stepped && dir == 0) {
-        printf("stepped in dir 0\n");
+        // printf("stepped in dir 0\n");
         boundary_high = current_position;
         high_boundary_set = 1;
         // printf("Upper boundary found: %d\n", boundary_high);  // rbf
     } else if (stepped && dir == 1) {
-        printf("stepped in dir 1\n");
+        // printf("stepped in dir 1\n");
         boundary_low = current_position;
         low_boundary_set = 1;
         // printf("Lower boundary found: %d\n", boundary_low);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
-    printf("low_boundary_set: %d, high_boundary_set: %d\n", low_boundary_set, high_boundary_set);
+    // printf("low_boundary_set: %d, high_boundary_set: %d\n", low_boundary_set, high_boundary_set);
     if (low_boundary_set && high_boundary_set) {
         normalize_boundaries();
     }
@@ -303,11 +280,11 @@ void find_boundary(uint gpio) {
 
 void enable_automation(void) {
     automation_enabled = 1;
-    printf("automation state: %d\n", automation_enabled);  // rbf
+    // printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
 
 void disable_automation(void) {
     automation_enabled = 0;
-    printf("automation state: %d\n", automation_enabled);  // rbf
+    // printf("automation state: %d\n", automation_enabled);  // rbf
 }

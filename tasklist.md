@@ -3,24 +3,22 @@
 
 CURRENT TASK:
 
-1. day, month, year, hour, etc. shouldn't be set in the main loop since they stagnate and are only used to set the RTC. The "real" (though not perfectly accurate) day, min, hour, etc. can be had with rtc_get_datetime() but this is only ever done in gnss.c or set_next_alarm. Just initialize them there.<br>
 
 
 
 REMAINING TASKS:
 ------------------------------------------------------------------------------
 
-1. signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.
+
 
 
 
 
 POTENTIAL FUTURE VERISON FEATURES:
 ------------------------------------------------------------------------------
-1. add a watchdog to keep the loop alive
-1. complicated blind openings like imperceptibly slowly opening and closing throughout the day, etc.
-1. use DMA instead of the long and slow IRQ currently used for reading GNSS data. The current system works enough for the latency and throughput, though.
-1. use PIO on the pico to control the stepper instead of bit banging the signals.
+- add a watchdog to keep the loop alive
+- complicated blind openings like imperceptibly slowly opening and closing throughout the day, etc.
+- use PIO on the pico to control the stepper instead of bit banging the signals.
 
 COMPLETE TASKS:
 ------------------------------------------------------------------------------
@@ -97,3 +95,6 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...<br>
 ✅ debugged failed gnss read after once successful read. This was the sleep/wake_gnss() sequence (dig more into this -- use gnss_config.). NOTE: multicore worked, but wasn't necessary, the code works without multicore as the gnss functions are blocking.<br>
 ✅ remove unused global vars: gnss_running, transfer_count...<br>
 ✅ be sure to unclaim dma channels on deinit.<br>
+✅ signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.<br>
+✅ day, month, year, hour, etc. shouldn't be set in the main loop since they stagnate and are only used to set the RTC. The "real" (though not perfectly accurate) day, min, hour, etc. can be had with rtc_get_datetime() but this is only ever done in gnss.c or set_next_alarm. Just initialize them there.<br>
+✅ use DMA instead of the long and slow IRQ currently used for reading GNSS data. The current system works enough for the latency and throughput, though.
