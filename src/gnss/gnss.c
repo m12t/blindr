@@ -38,15 +38,15 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
                            PIO pio, uint sm, uint offset, uint *gnss_fix, uint *data_found) {
     printf("managing gnss connection\n");
     char buffer_copy[BUFFER_LEN];
-    for (int i=0; i<240; i++) {  // the main timeout loop of ~2 mins
-        printf("--------------------------------\n");
-        busy_wait_ms(500);
+    for (int i=0; i<6000; i++) {  // the main timeout loop of ~5 mins
+        // printf("%d--------------------------------\n", i);
+        busy_wait_ms(100);
         if (*gnss_read_successful) {
             *gnss_configured = 1;
             return 1;  // deinit was already called, simply return.
         }
         if (!buffer[0] || !buffer[BUFFER_LEN-1]) {  // crude check for some values being found
-            if (i > 60 && !*data_found) {
+            if (i > 300 && !*data_found) {
                 printf("no signal found... this was buffer:\n----\n%s\n---\n", buffer);
                 // ~30 second timeout for any signal. if nothing detected on UART, abort.
                 gnss_deinit(pio, sm, offset);
@@ -145,15 +145,15 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
                   uint *north, uint *east, int *utc_offset,
                   uint *gnss_read_successful, uint time_only, PIO pio,
                   uint sm, uint offset, uint *gnss_fix) {
-    printf("parsing...\n");
+    // printf("parsing...\n");
     uint sentences_pos = 0;
     split_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]), &sentences_pos);
     int i=0, valid=0, msg_type = 0, num_fields=0;
     int16_t year;
     int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
-        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
-        printf("gnss fix: %d\n", *gnss_fix);
+        // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        // printf("gnss fix: %d\n", *gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
