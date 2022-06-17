@@ -17,7 +17,7 @@ int main(void) {
     double latitude=0.0, longitude=0.0;
     int north=-1, east=-1;
     int utc_offset;
-    uint baud_rate=9600, new_baud=115200, gnss_configured=0, consec_conn_failures=0;
+    uint baud_rate=9600, new_baud=115200, gnss_configured=0, consec_conn_failures=0, data_found=0, time_only=0, config_gnss=1;
 
     // -------------------------------- initialize the stepper and toggle switch --------------------------------
     stdio_init_all();  // rbf - used for debugging
@@ -31,19 +31,19 @@ int main(void) {
         if (toggle_detected) {
             // * check this first so that toggle switch gets priority over scheduled alarms since
             //   the timing on alarms can wait for human input to finish should they collide
+            toggle_detected = 0;
             handle_toggle(&low_boundary_set, &high_boundary_set, &boundary_low,
                           &boundary_high, &current_position, &automation_enabled,
                           toggle_gpio, toggle_event);
-            toggle_detected = 0;
             toggle_gpio = -1;
             toggle_event = -1;
 
         } else if (alarm_detected) {
-            read_actuate_alarm_sequence(&boundary_low, &boundary_high, &current_position, &event,
-                                        &automation_enabled, &latitude, &longitude, &north, &east,
-                                        &utc_offset, &baud_rate, new_baud, &gnss_configured,
-                                        &consec_conn_failures);
             alarm_detected = 0;
+            read_actuate_alarm_sequence(boundary_low, boundary_high, &current_position, &event,
+                                        automation_enabled, &latitude, &longitude, &north, &east,
+                                        &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
+                                        &consec_conn_failures, &data_found, &time_only);
 
         } else {
             sleep_ms(250);  // doubles as the requisite switch bounce delay in the event of toggle_detected=1
@@ -68,13 +68,44 @@ void toggle_callback(uint gpio, uint32_t event) {  // TODO: build out the gpio a
 }
 
 
-void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *current_position,
-                                 int *event, uint *automation_enabled, double *latitude,
+void actuate(int boundary_low, int boundary_high,
+            int *current_position, int event, uint automation_enabled) {
+    if (automation_enabled) {
+        if (event == 1) {
+            // it's a sunrise right now... open the blinds
+            step_to_position(current_position, (uint)(boundary_high - boundary_low) / 2, boundary_high);
+        } else if (event == 0) {
+            // it's a sunset right now... close the blinds
+            step_to_position(current_position, 0, boundary_high);
+        }
+    }
+}
+
+
+void read_actuate_alarm_sequence(int boundary_low, int boundary_high, int *current_position,
+                                 int *event, uint automation_enabled, double *latitude,
                                  double *longitude, int *north, int *east, int *utc_offset,
-                                 uint *baud_rate, uint new_baud, uint *gnss_configured,
-                                 uint *consec_conn_failures) {
+                                 uint *baud_rate, uint new_baud, uint *gnss_configured, uint *config_gnss,
+                                 uint *consec_conn_failures, uint *data_found, uint *time_only) {
     // handle the current alarm/event and set the next one.
-    // printf("value of gnss_configured: %d. current baud: %d\n", *gnss_configured, *baud_rate);  // rbf
+    uint gnss_read_successful = 0;
+
+    actuate(boundary_low, boundary_high, current_position, *event, automation_enabled);
+
+    gnss_init(latitude, longitude, north, east, utc_offset, baud_rate, &gnss_read_successful,
+              gnss_configured, *config_gnss, new_baud, *time_only, data_found);
+
+    if (gnss_read_successful) {
+        *time_only = 1;  // now that the first runthrough has gathered lat/long, idempotently set time_only to true for future requests.
+        *config_gnss = 0;
+    } else {
+        // * the read failed. reset UART baud to the gnss module's
+        //   default and set the flag to run the configuration on the module
+        consec_conn_failures += 1;
+        *config_gnss = 1;
+        *baud_rate = 9600;  // reset the starting baud to default so the config messages work
+        uart_set_baudrate(UART_ID, *baud_rate);
+    }
 
     datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
     rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
@@ -85,16 +116,10 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
     int8_t dotw = now.dotw;
     int8_t hour = now.hour;
     int8_t min = now.min;
-    int8_t sec = 0;
+    int8_t sec = 0;  // rbf.. only used when setting <1m alarms for testing.
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
-    uint config_gnss = 0;
-    uint time_only = 1;
-    uint gnss_read_successful = 0;
 
     if (*event == 1) {  // it's a sunrise right now
-        if (automation_enabled) {  // only move the blinds if automation is enabled
-            step_to_position(current_position, (uint)(*boundary_high - *boundary_low) / 2, *boundary_high);  // open the blinds
-        }
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                year, month, day, *utc_offset, *latitude, *longitude);
         *event = 0;  // next alarm will be sunset
@@ -111,9 +136,6 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
                                year, month, day, *utc_offset, *latitude, *longitude);
 
         if (*event == 0) {  // it's a sunset right now
-            if (automation_enabled) {
-                step_to_position(current_position, 0, *boundary_high);  // close the blinds
-            }
             *event = 1;  // next alarm will be sunrise
         } else {
             // the time is after both the sunrise and sunset (or there were neither)...
@@ -129,47 +151,18 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
         min = rise_minute;
     }
 
-    if (!*gnss_configured || *consec_conn_failures > 0) {
-        printf("why did i run? gnss_configured: %d, consec_conn_failures: %d\n", *gnss_configured, *consec_conn_failures);
-        config_gnss = 1;
-        time_only = 0;
-        *baud_rate = 9600;  // reset the starting baud to default so the config messages work
-        printf("in blindr updating baud to %d\n", *baud_rate);
-        uart_set_baudrate(UART_ID, *baud_rate);
-    }
+    datetime_t next_alarm = {  // the `real` version
+        .year  = year,
+        .month = month,
+        .day   = day,
+        .dotw  = dotw,
+        .hour  = hour,
+        .min   = min,
+        .sec   = 00
+    };
 
-    gnss_init(latitude, longitude, north, east, &year, &month, &day, &hour, &min, &sec, utc_offset, baud_rate,
-              &gnss_read_successful, gnss_configured, config_gnss, new_baud, time_only);
-    if (!gnss_read_successful) {
-        printf("failed read!\n");
-        consec_conn_failures += 1;
-        if (*event == 1 || *event == -1) {
-            // the above code already calculated tomorrow's date and rise time, use it.
-        } else {
-            // get tomorrow's date and set the alarm for 00:00 tomorrow
-            today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
-            dotw = get_dotw(year, month, day);  // get tomorrow's day of the week using the freshly changed values for year, month, day
-            hour = 0;
-            min = 0;
-        }
-        *event = -1;  // set the next event to invalid
-    } else {  // rbf
-        printf("gnss init successful on repeat alarm!\n");
-    }
-
-    // datetime_t next_alarm = {  // the `real` version
-    //     .year  = year,
-    //     .month = month,
-    //     .day   = day,
-    //     .dotw  = dotw,
-    //     .hour  = hour,
-    //     .min   = min,
-    //     .sec   = 00
-    // };
-
-    /* ---------------- all the below can be deleted after testing ---------------- */
-    rtc_get_datetime(&now);  // get the newly set time
-    int sleep_time = 40;
+    /* ---------------- all the below can be deleted after testing ---------------- 
+    int sleep_time = 10;
     if (now.sec + sleep_time > 59) {  // for debugging only
         min = now.min + 1;
         sec = (now.sec + sleep_time) % 60;
@@ -186,15 +179,15 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
         .min   = min,
         .sec   = sec
     };
-    /* ---------------- all the above can be deleted after testing ---------------- */
+     ---------------- all the above can be deleted after testing ---------------- */
 
-    if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
+    if (*consec_conn_failures >= MAX_CONSEC_CONN_FAILURES) {
+        printf("max consec failures reached. No further alarms will be set\n");
+    } else {
+        utils_set_rtc_alarm(&next_alarm, &alarm_callback);
         printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
-               next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
-        utils_set_rtc_alarm(&next_alarm, &alarm_callback);
-    } else {
-        printf("max consec failures reached. No further alarms will be set\n");
+            next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
     }
 }
 

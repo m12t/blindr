@@ -5,10 +5,9 @@
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>> BEGIN INIT/DEINIT FUNCTIONS >>>>>>>>>>>>>>>>>>>>>>>>>>>> */
 
-void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int16_t *year,
-               int8_t *month, int8_t *day, int8_t *hour, int8_t *min, int8_t *sec, int *utc_offset,
+void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int *utc_offset,
                uint *baud_rate, uint *gnss_read_successful, uint *gnss_configured, uint config_gnss,
-               uint new_baud_rate, uint time_only) {
+               uint new_baud_rate, uint time_only, uint *data_found) {
     char buffer[BUFFER_LEN] __attribute__((aligned(BUFFER_LEN))) = { 0 };
     char *sentences[SENTENCES_LEN] = { NULL };
     uint gnss_fix = 0;
@@ -27,19 +26,17 @@ void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int
     uart_rx_program_init(pio, sm, offset, UART_RX_PIN, *baud_rate);
 
     gnss_dma_init(buffer);
-    gnss_manage_connection(buffer, sentences, latitude, longitude, north, east, year,
-                           month, day, hour, min, sec, utc_offset, gnss_read_successful,
-                           gnss_configured, time_only, pio, sm, offset, &gnss_fix);
+    gnss_manage_connection(buffer, sentences, latitude, longitude, north, east,
+                           utc_offset, gnss_read_successful, gnss_configured,
+                           time_only, pio, sm, offset, &gnss_fix, data_found);
 }
 
 
 int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
-                           double *longitude, uint *north, uint *east, int16_t *year,
-                           int8_t *month, int8_t *day, int8_t *hour, int8_t *min, int8_t *sec,
-                           int *utc_offset, uint *gnss_read_successful, uint *gnss_configured,
-                           uint time_only, PIO pio, uint sm, uint offset, uint *gnss_fix) {
+                           double *longitude, uint *north, uint *east, int *utc_offset,
+                           uint *gnss_read_successful, uint *gnss_configured, uint time_only,
+                           PIO pio, uint sm, uint offset, uint *gnss_fix, uint *data_found) {
     printf("managing gnss connection\n");
-    uint data_found = 0;
     char buffer_copy[BUFFER_LEN];
     for (int i=0; i<240; i++) {  // the main timeout loop of ~2 mins
         printf("--------------------------------\n");
@@ -49,7 +46,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
             return 1;  // deinit was already called, simply return.
         }
         if (!buffer[0] || !buffer[BUFFER_LEN-1]) {  // crude check for some values being found
-            if (i > 60 && !data_found) {
+            if (i > 60 && !*data_found) {
                 printf("no signal found... this was buffer:\n----\n%s\n---\n", buffer);
                 // ~30 second timeout for any signal. if nothing detected on UART, abort.
                 gnss_deinit(pio, sm, offset);
@@ -57,11 +54,10 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
             }
         } else {
             // copy buffer to avoid race condition
-            data_found = 1;
+            *data_found = 1;
             *gnss_configured = 1;
             memcpy(buffer_copy, buffer, BUFFER_LEN);  // duplicate the buffer to avoid a race with DMA
-            parse_buffer(buffer_copy, sentences, latitude, longitude, north,
-                         east, year, month, day, hour, min, sec, utc_offset,
+            parse_buffer(buffer_copy, sentences, latitude, longitude, north, east, utc_offset,
                          gnss_read_successful, time_only, pio, sm, offset, gnss_fix);
         }
     }
@@ -146,14 +142,15 @@ void gnss_uart_deinit(void) {
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>> BEGIN DATA PARSING FUNCTIONS >>>>>>>>>>>>>>>>>>>>>>>>>>>> */
 void parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
-                  uint *north, uint *east, int16_t *year, int8_t *month, int8_t *day,
-                  int8_t *hour, int8_t *min, int8_t *sec, int *utc_offset,
+                  uint *north, uint *east, int *utc_offset,
                   uint *gnss_read_successful, uint time_only, PIO pio,
                   uint sm, uint offset, uint *gnss_fix) {
     printf("parsing...\n");
     uint sentences_pos = 0;
     split_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]), &sentences_pos);
     int i=0, valid=0, msg_type = 0, num_fields=0;
+    int16_t year;
+    int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
         printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         printf("gnss fix: %d\n", *gnss_fix);
@@ -178,18 +175,18 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
                 // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
             } else if (msg_type == 2 && *gnss_fix) {
                 // only parse if there is a fix
-                parse_zda(fields, year, month, day, hour, min, sec);
-                // printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
-                if (*latitude && *longitude && *year && *month && *day && (*day || *hour || *sec)) {
+                parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
+                printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
+                if ((time_only || *latitude && *longitude) && year && month && day && (day || hour || sec)) {
                     // last check the values are atleast nonzero.
                     // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
                     // but the next second won't be for long (<1s) so loop again until it is.
                     get_utc_offset(*longitude, utc_offset);
-                    localize_datetime(year, month, day, hour, *utc_offset);
-                    set_onboard_rtc(*year, *month, *day, *hour, *min, *sec);
+                    localize_datetime(&year, &month, &day, &hour, *utc_offset);
+                    set_onboard_rtc(year, month, day, hour, min, sec);
                     // rtc is running and lat and long are set by nature of gnss_fix=1. deinitialize...
                     printf("final lat long: %f, %f\n", *latitude, *longitude);  // rbf
-                    printf("final time: %d/%d/%d %d:%d:%d\n", *year, *month, *day, *hour, *min, *sec);
+                    printf("final time: %d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                     *gnss_read_successful = 1;
                     gnss_deinit(pio, sm, offset);
                 }
@@ -216,15 +213,14 @@ void split_buffer(char *buffer, char **sentences, int max_sentences, uint *sente
         // printf("first valid index: %d\n", first_valid_index);
         eol = strtok(&buffer[first_valid_index], "\n\r");
         while (eol != NULL && i < max_sentences) {
-            printf("i: %d\n", i);
             sentences[*sentences_pos++] = eol;
             *sentences_pos %= SENTENCES_LEN;
             eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
             i++;
         }
-        for (int j=0; j < i; j++) {
-            printf("parsed: %s\n", sentences[j]);
-        }
+        // for (int j=0; j < i; j++) {
+        //     printf("parsed: %s\n", sentences[j]);
+        // }
     }
 }
 
