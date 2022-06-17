@@ -1,226 +1,156 @@
 #include "blindr.h"
 
-uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
-int boundary_low=0, boundary_high=0, midpoint=0, current_position=0;  // stepper positioning. midpoint and num_steps can be calculated
-int8_t sec, min, hour, day, month, rise_hour, rise_minute, set_hour, set_minute, utc_offset;
-int16_t year;
-double latitude=0.0, longitude=0.0;  // use atof() on these. float *should* be sufficient
-int north, east, gnss_fix=0;  // 1 for North and East, 0 for South and West, respectively. GGA fix quality
-uint gnss_running = 0;  // flag to prevent a race condition in the main set_next_alarm()
-uint gnss_read_successful=0, gnss_configured=0;
 
-int next_event = -1;
-int automation_enabled=1;  // flag useful for whether or not to operate the blinds automatically.
-
-uint baud_rate = 9600;  // default baud rate
-datetime_t now = { 0 };  // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
-uint consec_conn_failures = 0;  // counter that will disable the alarm cycle after n failed gnss connections
-
-uint sleep = 1;
-
+uint alarm_detected=1, toggle_detected=0;  // flag that gets set by the alarm callback to cause a runthrough of the gnss read, blind actuation, and next alarm setting sequence.
+uint toggle_gpio=-1;
+uint32_t toggle_event=-1;  // variables supplied by the toggle IRQ callback
 
 int main(void) {
-    stdio_init_all();  // rbf - used for debugging
-    printf("blindr initializing...!\n");
+    // -------------------------------- initialize main program vars --------------------------------
+    // blind variables
+    uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
+    int boundary_low=0, boundary_high=0, current_position=0;  // stepper positioning
+    int event = -1;       // flag for what the next solar event is: 0=sunset, 1=sunrise, -1=NULL/Invalid
+    uint automation_enabled = 1;  // flag useful for whether or not to operate the blinds automatically.
 
+    // gnss variables
+    double latitude=0.0, longitude=0.0;
+    int north=-1, east=-1;
+    int utc_offset;
+    uint baud_rate=9600, new_baud=115200, gnss_configured=0, consec_conn_failures=0;
+
+    // -------------------------------- initialize the stepper and toggle switch --------------------------------
+    stdio_init_all();  // rbf - used for debugging
+    printf("blindr initializing...\n");
     stepper_init();
     toggle_init(&toggle_callback);
-    printf("bef1\n");
 
-    core1_entry();
-    printf("aft1\n");
-    sleep=0;
-    printf("bef2\n");
-    core1_entry();
+    // -------------------------------- run the main program loop indefinitely --------------------------------
+    while (1) {
+        // keep the program alive indefinitely while listening for interrupts and handling them accordingly.
+        if (toggle_detected) {
+            // * check this first so that toggle switch gets priority over scheduled alarms since
+            //   the timing on alarms can wait for human input to finish should they collide
+            handle_toggle(&low_boundary_set, &high_boundary_set, &boundary_low,
+                          &boundary_high, &current_position, &automation_enabled,
+                          toggle_gpio, toggle_event);
+            toggle_detected = 0;
+            toggle_gpio = -1;
+            toggle_event = -1;
 
-    printf("aft2\n");
+        } else if (alarm_detected) {
+            read_actuate_alarm_sequence(&boundary_low, &boundary_high, &current_position, &event,
+                                        &automation_enabled, &latitude, &longitude, &north, &east,
+                                        &utc_offset, &baud_rate, new_baud, &gnss_configured,
+                                        &consec_conn_failures);
+            alarm_detected = 0;
 
-    // while (1) {
-    //     // keep the program alive indefinitely
-    //     if (sleep) {
-    //         sleep_ms(100);
-    //     } else {
-    //         sleep = 1;
-    //         sleep_ms(1000);
-    //         set_next_alarm();
-    //     }
-    // }
+        } else {
+            sleep_ms(250);  // doubles as the requisite switch bounce delay in the event of toggle_detected=1
+        }
+    }
 }
+
 
 void alarm_callback(void) {
-    sleep = 0;
-}
-
-void core1_entry(void) {
-    printf("inside core 1\n");
-    uint config_gnss = 1;
-    uint new_baud = 9600;
-    uint time_only = 0;
-    uint32_t transfer_count = 1e8;
-    gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
-              &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
-    printf("just getting back now...\n");
-
+    printf("alarm detected in callback\n");
+    alarm_detected = 1;
 }
 
 
-void set_first_alarm(void) {
-    // this function is similar to set_next_alarm() except the way it finds the next
-    // event is different (it compares times instad of going off `next_event`). It
-    // also doesn't initialize the GNSS again as that was just done moments prior.
-    int16_t year;
-    int8_t month, day, dotw, hour, min;
-
-    // todo: check for the timeout counter, cancel it if needed.
-
-    utils_get_rtc_datetime(&now);
-    calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                           now.year, now.month, now.day, utc_offset, latitude, longitude);
-
-    // it's currently neither a sunrise or a sunset
-    // get the earliest event that is still > now
-    if ((rise_hour > now.hour) || (rise_hour == now.hour && rise_minute > now.min)) {
-        next_event = 1;  // the next valid event is a sunrise
-        year = now.year;
-        month = now.month;
-        day = now.day;
-        dotw = now.dotw,
-        hour = rise_hour;
-        min = rise_minute;
-    } else if ((set_hour > now.hour) || (set_hour == now.hour && set_minute > now.min)) {
-        next_event = 0;  // the next valid event is a sunset
-        year = now.year;
-        month = now.month;
-        day = now.day;
-        dotw = now.dotw,
-        hour = set_hour;
-        min = set_minute;
-    } else {
-        int16_t tomorrow_year=now.year;
-        int8_t tomorrow_month=now.month, tomorrow_day=now.day;
-        today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
-        int8_t tomorrow_dotw = get_dotw(tomorrow_year, tomorrow_month, tomorrow_day);
-        // the time is after both the sunrise and sunset (or there were neither)...
-        // get the sunrise time tomorrow. In the edge case there is none (ie. high
-        // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
-        calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                                tomorrow_year, tomorrow_month, tomorrow_day, utc_offset, latitude, longitude);
-        next_event = -1;  // invalid again
-        year = tomorrow_year;
-        month = tomorrow_month;
-        day = tomorrow_day;
-        dotw = tomorrow_dotw,
-        hour = rise_hour;
-        min = rise_minute;
-    }
-
-    // datetime_t first_alarm = {  // the `real` version
-    //     .year  = year,
-    //     .month = month,
-    //     .day   = day,
-    //     .dotw  = dotw,
-    //     .hour  = hour,
-    //     .min   = min,
-    //     .sec   = 00,
-    // };
-
-    int sleep_time = 10;
-    if (now.sec + sleep_time > 59) {  // for debugging only
-        min = now.min + 1;
-        sec = (now.sec + sleep_time) % 60;
-    } else {
-        min = now.min;
-        sec = now.sec + sleep_time;
-    }
-    datetime_t first_alarm = {  // for debugging multiple alarm cycles
-        .year  = now.year,
-        .month = now.month,
-        .day   = now.day,
-        .dotw  = now.dotw,
-        .hour  = now.hour,
-        .min   = min,
-        .sec   = sec,
-    };
-
-    // utils_set_rtc_alarm(&first_alarm, &alarm_callback);
-    printf("setting the first alarm for: %d/%d/%d %d:%d:%d\n",
-           first_alarm.month, first_alarm.day, first_alarm.year,
-           first_alarm.hour, first_alarm.min, first_alarm.sec);  // rbf
+void toggle_callback(uint gpio, uint32_t event) {  // TODO: build out the gpio and event variable handling...
+    // NOTE: this may cause a delay of up to 1000ms before actuaing the blinds which is undesirable...
+    //       reduce the main while sleep to 250ms which is what the switch bounce delay was... just remove that and
+    //       change the main sleep to 250ms.additionally, this setup is needed for the vars from `main()`
+    //       to be sent via pointers (automation_enabled, boundaries, etc.)
+    toggle_detected = 1;
+    toggle_gpio = gpio;
+    toggle_event = event;
 }
 
 
-int set_next_alarm(void) {
+void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *current_position,
+                                 int *event, uint *automation_enabled, double *latitude,
+                                 double *longitude, int *north, int *east, int *utc_offset,
+                                 uint *baud_rate, uint new_baud, uint *gnss_configured,
+                                 uint *consec_conn_failures) {
     // handle the current alarm/event and set the next one.
 
-    int16_t year, tomorrow_year=now.year;
-    int8_t month, day, dotw, hour, min, tomorrow_month=now.month, tomorrow_day=now.day;
+    datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
+    rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
 
-    rtc_get_datetime(&now);
-    calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                           now.year, now.month, now.day, utc_offset, latitude, longitude);
+    int16_t year = now.year;
+    int8_t month = now.month;
+    int8_t day = now.day;
+    int8_t dotw = now.dotw;
+    int8_t hour = now.hour;
+    int8_t min = now.min;
+    int8_t sec = 0;
+    int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
+    uint config_gnss = 0;
+    uint time_only = 1;
+    uint gnss_read_successful = 0;
 
-    // printf("rise %d:%d, set %d:%d\n", rise_hour, rise_minute, set_hour, set_minute);
-
-    // get tomorrow's day, month, and even year
-    today_is_tomorrow(&tomorrow_year, &tomorrow_month, &tomorrow_day, NULL, utc_offset);
-    int8_t tomorrow_dotw = get_dotw(tomorrow_year, tomorrow_month, tomorrow_day);
-
-    if (next_event == 1) {  // it's a sunrise
-        step_to_position(&current_position, midpoint, boundary_high);  // open the blinds
-        next_event = 0;  // next alarm will be sunset
-        year = now.year;
-        month = now.month;
-        day = now.day;
-        dotw = now.dotw,
+    if (*event == 1) {  // it's a sunrise right now
+        if (automation_enabled) {  // only move the blinds if automation is enabled
+            step_to_position(current_position, (uint)(*boundary_high - *boundary_low) / 2, *boundary_high);  // open the blinds
+        }
+        calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                               year, month, day, *utc_offset, *latitude, *longitude);
+        *event = 0;  // next alarm will be sunset
         hour = set_hour;
         min = set_minute;
-    } else if (next_event == 0) {  // it's a sunset
-        step_to_position(&current_position, 0, boundary_high);  // close the blinds
-        // the next event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
-        calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                               tomorrow_year, tomorrow_month, tomorrow_day, utc_offset,
-                               latitude, longitude);
-        next_event = 1;  // next alarm will be sunrise
-        year = tomorrow_year;
-        month = tomorrow_month;
-        day = tomorrow_day;
-        dotw = tomorrow_dotw,
-        hour = rise_hour;
-        min = rise_minute;
     } else {
-        // the time is after both the sunrise and sunset (or there were neither)...
-        // get the sunrise time tomorrow. In the edge case there is none (ie. high
-        // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
+        // * the next event is a sunrise (or invalid) and will occur tomorrow. Get tomorrow's solar events:
+        //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
+        //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
+        today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
+        dotw = get_dotw(year, month, day);  // get tomorrow's day of the week using the freshly changed values for year, month, day
+
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                                tomorrow_year, tomorrow_month, tomorrow_day, utc_offset, latitude, longitude);
-        next_event = -1;  // invalid again
-        year = tomorrow_year;
-        month = tomorrow_month;
-        day = tomorrow_day;
-        dotw = tomorrow_dotw,
+                               year, month, day, *utc_offset, *latitude, *longitude);
+
+        if (*event == 0) {  // it's a sunset right now
+            if (automation_enabled) {
+                step_to_position(current_position, 0, *boundary_high);  // close the blinds
+            }
+            *event = 1;  // next alarm will be sunrise
+        } else {
+            // the time is after both the sunrise and sunset (or there were neither)...
+            // get the sunrise time tomorrow. In the edge case there is none (ie. high
+            // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
+            if (rise_hour || rise_minute) {
+                *event = 1;
+            } else {
+                *event = -1;  // invalid again
+            }
+        }
         hour = rise_hour;
         min = rise_minute;
     }
 
-    uint config_gnss = 1;
-    uint new_baud = 115200;
-    uint time_only = 0;
-    uint32_t transfer_count = 1e8;
-    gnss_read_successful=0, gnss_fix=0, gnss_running=0;
-    gnss_init(&latitude, &longitude, &north, &east, &year, &month, &day, &hour, &min, &sec, &utc_offset, &baud_rate,
-              &gnss_running, &gnss_fix, &gnss_read_successful, &gnss_configured, config_gnss, new_baud, time_only, transfer_count);
+    if (!gnss_configured || consec_conn_failures > 0) {
+        config_gnss = 1;
+        time_only = 0;
+        *baud_rate = 9600;  // reset the starting baud to default so the config messages work
+        uart_set_baudrate(UART_ID, *baud_rate);
+    }
+
+    gnss_init(latitude, longitude, north, east, &year, &month, &day, &hour, &min, &sec, utc_offset, baud_rate,
+              &gnss_read_successful, gnss_configured, config_gnss, new_baud, time_only);
     if (!gnss_read_successful) {
         printf("failed read!\n");
         consec_conn_failures += 1;
-        // if (!gnss_configured)  // if some signals were received but no valid fix, reconfig on next iteration and increase the transfer_count.
-
-        next_event = -1;  // invalid
-        year = tomorrow_year;
-        month = tomorrow_month;
-        day = tomorrow_day;
-        dotw = tomorrow_dotw,
-        hour = rise_hour;
-        min = rise_minute;
+        if (*event == 1 || *event == -1) {
+            // the above code already calculated tomorrow's date and rise time, use it.
+        } else {
+            // get tomorrow's date and set the alarm for 00:00 tomorrow
+            today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
+            dotw = get_dotw(year, month, day);  // get tomorrow's day of the week using the freshly changed values for year, month, day
+            hour = 0;
+            min = 0;
+        }
+        *event = -1;  // set the next event to invalid
     } else {  // rbf
         printf("gnss init successful on repeat alarm!\n");
     }
@@ -234,6 +164,8 @@ int set_next_alarm(void) {
     //     .min   = min,
     //     .sec   = 00
     // };
+
+    /* ---------------- all the below can be deleted after testing ---------------- */
     rtc_get_datetime(&now);  // get the newly set time
     int sleep_time = 10;
     if (now.sec + sleep_time > 59) {  // for debugging only
@@ -252,8 +184,9 @@ int set_next_alarm(void) {
         .min   = min,
         .sec   = sec
     };
+    /* ---------------- all the above can be deleted after testing ---------------- */
 
-    if (consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
+    if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
         printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
                next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
@@ -261,7 +194,6 @@ int set_next_alarm(void) {
     } else {
         printf("max consec failures reached. No further alarms will be set\n");
     }
-    return 0;
 }
 
 
@@ -275,35 +207,34 @@ void reenable_interrupts_for(uint gpio, int event) {
 }
 
 
-void set_automation_state(void) {
+void set_automation_state(uint *automation_enabled) {
     // read the state of the toggle gpio pins
     busy_wait_ms(250);  // eliminate mechanical switch bounce
     if (gpio_get(GPIO_TOGGLE_DOWN_PIN) == 0 || gpio_get(GPIO_TOGGLE_UP_PIN) == 0) {
-        disable_automation();
+        disable_automation(automation_enabled);
     } else {
-        enable_automation();
+        enable_automation(automation_enabled);
     }
 }
 
 
-void normalize_boundaries(void) {
+void normalize_boundaries(int *boundary_low, int *boundary_high, int *current_position) {
     // set low boundary to 0
     printf("normalizing...\n");  // rbf
     printf("current pos before: %d\n", current_position);  // rbf
     printf("--------------\n");  // rbf
-    current_position += abs(boundary_low);
-    boundary_high += abs(boundary_low);
-    boundary_low += abs(boundary_low);  // must do this *after* other shifts
-    midpoint = (boundary_high - boundary_low) / 2;
+    *current_position += abs(*boundary_low);
+    *boundary_high += abs(*boundary_low);
+    *boundary_low += abs(*boundary_low);  // must do this *after* other shifts
     printf("new low boundary: %d\n", boundary_low);  // rbf
     printf("new high boundary: %d\n", boundary_high);  // rbf
     printf("current pos after: %d\n", current_position);  // rbf
-    printf("middy: %d\n", midpoint);  // rbf
 
 }
 
 
-void find_boundary(uint gpio) {
+void find_boundary(uint *low_boundary_set, uint *high_boundary_set, int *boundary_low,
+                   int *boundary_high, int *current_position, uint gpio) {
     // wait for down toggle
     busy_wait_ms(100);  // combar switch bounce
     int stepped = 0;
@@ -313,37 +244,40 @@ void find_boundary(uint gpio) {
     wake_stepper();
     while (gpio_get(gpio) == 0) {
         // while the switch is still pressed
-        single_step(&current_position, dir, 1500);
+        single_step(current_position, dir, 1500);
         stepped = 1;
     }
     sleep_stepper();
     // update the respective boundary
     if (stepped && dir == 0) {
-        boundary_high = current_position;
-        high_boundary_set = 1;
+        *boundary_high = *current_position;
+        *high_boundary_set = 1;
         // printf("Upper boundary found: %d\n", boundary_high);  // rbf
     } else if (stepped && dir == 1) {
-        boundary_low = current_position;
-        low_boundary_set = 1;
+        *boundary_low = *current_position;
+        *low_boundary_set = 1;
         // printf("Lower boundary found: %d\n", boundary_low);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
-    if (low_boundary_set && high_boundary_set) {
-        normalize_boundaries();
+    if (*low_boundary_set && *high_boundary_set) {
+        normalize_boundaries(boundary_low, boundary_high, current_position);
     }
 }
 
 
-void toggle_callback(uint gpio, uint32_t event) {
+void handle_toggle(uint *low_boundary_set, uint *high_boundary_set, int *boundary_low,
+                   int *boundary_high, int *current_position, uint *automation_enabled,
+                   uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
         if (!low_boundary_set || !high_boundary_set) {
-            find_boundary(gpio);
+            find_boundary(low_boundary_set, high_boundary_set, boundary_low,
+                          boundary_high, current_position, gpio);
         } else {
-            step_indefinitely(&current_position, boundary_high, gpio);
+            step_indefinitely(current_position, *boundary_high, gpio);
         }
         // by now we're done with the falling action whether it's because
         // we reached a boundary of the blinds or because of a rising edge.
@@ -375,19 +309,17 @@ void toggle_callback(uint gpio, uint32_t event) {
         // both detected, ignore
         reenable_interrupts_for(gpio, 0x0C);
     }
-    set_automation_state();
+    set_automation_state(automation_enabled);
 }
 
 
-void disable_automation(void) {
-    // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
-    automation_enabled = 0;
+void enable_automation(uint *automation_enabled) {
+    *automation_enabled = 1;
     // printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
 
-void enable_automation(void) {
-    // this is an idempotent action: https://en.wikipedia.org/wiki/Idempotence
-    automation_enabled = 1;
+void disable_automation(uint *automation_enabled) {
+    *automation_enabled = 0;
     // printf("automation state: %d\n", automation_enabled);  // rbf
 }

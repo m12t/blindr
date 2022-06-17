@@ -3,30 +3,14 @@
 
 CURRENT TASK:
 
-updates process flow for gnss uart via DMA:
-blindr
-    main
-    -> gnss
-gnss
-    gnss_init()
-        uart_init()
-        dma_init()
-    manage_connection()
-        if (buffer)
-            parse()
-        busy_wait_ms(100)
+1. day, month, year, hour, etc. shouldn't be set in the main loop since they stagnate and are only used to set the RTC. The "real" (though not perfectly accurate) day, min, hour, etc. can be had with rtc_get_datetime() but this is only ever done in gnss.c or set_next_alarm. Just initialize them there.<br>
 
-// be sure to unclaim dma channels on deinit.
 
 
 REMAINING TASKS:
 ------------------------------------------------------------------------------
 
 1. signal might have been read but no valid data were parsed. TODO: if signal but not valid, set configure flag to true.
-✅ be able to dynamically create a change baud rate pub41 message<br>
-✅ cancel pio and SM after use to clear for the next round. this solves the "\*\*\* PANIC \*\*\* No program space"<br>
-
-✅ debugged failed gnss read after once successful read. This was the sleep/wake_gnss() sequence (dig more into this -- use gnss_config.). NOTE: multicore worked, but wasn't necessary, the code works without multicore as the gnss functions are blocking.
 
 
 
@@ -108,4 +92,8 @@ the main() of blindr.c... and on_uart_rx() can't receive any parameters...<br>
 ✅ add the ability to power on/off gnss module and send configuratioins to it<br>
     > wake it every week or so to ensure the onboard RTC stays accurate.<br>
 ✅ allow for a mode that runs without gnss/uart on startup (implement a timeout on listening on uart??? if uart isn't found within 2 minutes, shut it down? -> set rtf to 01/01/2000 00:00:01? and once it reaches ...15:00?). this will just function as a manual-only blind for the cases a restart is triggered without a gnss module present and you still want to be able to control the blinds.<br>
-
+✅ be able to dynamically create a change baud rate pub41 message<br>
+✅ cancel pio and SM after use to clear for the next round. this solves the "\*\*\* PANIC \*\*\* No program space"<br>
+✅ debugged failed gnss read after once successful read. This was the sleep/wake_gnss() sequence (dig more into this -- use gnss_config.). NOTE: multicore worked, but wasn't necessary, the code works without multicore as the gnss functions are blocking.<br>
+✅ remove unused global vars: gnss_running, transfer_count...<br>
+✅ be sure to unclaim dma channels on deinit.<br>
