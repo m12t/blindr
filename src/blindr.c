@@ -53,7 +53,6 @@ int main(void) {
 
 
 void alarm_callback(void) {
-    printf("alarm detected in callback\n");
     alarm_detected = 1;
 }
 
@@ -75,6 +74,7 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
                                  uint *baud_rate, uint new_baud, uint *gnss_configured,
                                  uint *consec_conn_failures) {
     // handle the current alarm/event and set the next one.
+    // printf("value of gnss_configured: %d. current baud: %d\n", *gnss_configured, *baud_rate);  // rbf
 
     datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
     rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
@@ -129,7 +129,8 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
         min = rise_minute;
     }
 
-    if (!gnss_configured || consec_conn_failures > 0) {
+    if (!*gnss_configured || *consec_conn_failures > 0) {
+        printf("why did i run? gnss_configured: %d, consec_conn_failures: %d\n", *gnss_configured, *consec_conn_failures);
         config_gnss = 1;
         time_only = 0;
         *baud_rate = 9600;  // reset the starting baud to default so the config messages work
@@ -168,7 +169,7 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
 
     /* ---------------- all the below can be deleted after testing ---------------- */
     rtc_get_datetime(&now);  // get the newly set time
-    int sleep_time = 10;
+    int sleep_time = 40;
     if (now.sec + sleep_time > 59) {  // for debugging only
         min = now.min + 1;
         sec = (now.sec + sleep_time) % 60;
@@ -222,28 +223,30 @@ void set_automation_state(uint *automation_enabled) {
 void normalize_boundaries(int *boundary_low, int *boundary_high, int *current_position) {
     // set low boundary to 0
     printf("normalizing...\n");  // rbf
-    printf("current pos before: %d\n", current_position);  // rbf
+    printf("current pos before: %d\n", *current_position);  // rbf
     printf("--------------\n");  // rbf
     *current_position += abs(*boundary_low);
     *boundary_high += abs(*boundary_low);
     *boundary_low += abs(*boundary_low);  // must do this *after* other shifts
-    printf("new low boundary: %d\n", boundary_low);  // rbf
-    printf("new high boundary: %d\n", boundary_high);  // rbf
-    printf("current pos after: %d\n", current_position);  // rbf
+    printf("new low boundary: %d\n", *boundary_low);  // rbf
+    printf("new high boundary: %d\n", *boundary_high);  // rbf
+    printf("current pos after: %d\n", *current_position);  // rbf
 
 }
 
 
 void find_boundary(uint *low_boundary_set, uint *high_boundary_set, int *boundary_low,
                    int *boundary_high, int *current_position, uint gpio) {
+    printf("finding boundary\n");
     // wait for down toggle
-    busy_wait_ms(100);  // combar switch bounce
+    // busy_wait_ms(100);  // combar switch bounce  -- not needed now that main loop has a delay
     int stepped = 0;
     // printf("gpio: %d\n", gpio);
     uint dir = gpio == GPIO_TOGGLE_UP_PIN ? 0 : 1;
     // printf("dir: %d\n", dir);
     wake_stepper();
     while (gpio_get(gpio) == 0) {
+        printf("stepping\n");
         // while the switch is still pressed
         single_step(current_position, dir, 1500);
         stepped = 1;
@@ -251,16 +254,19 @@ void find_boundary(uint *low_boundary_set, uint *high_boundary_set, int *boundar
     sleep_stepper();
     // update the respective boundary
     if (stepped && dir == 0) {
+        printf("stepped in dir 0\n");
         *boundary_high = *current_position;
         *high_boundary_set = 1;
         // printf("Upper boundary found: %d\n", boundary_high);  // rbf
     } else if (stepped && dir == 1) {
+        printf("stepped in dir 1\n");
         *boundary_low = *current_position;
         *low_boundary_set = 1;
         // printf("Lower boundary found: %d\n", boundary_low);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
+    printf("low_boundary_set: %d, high_boundary_set: %d\n", *low_boundary_set, *high_boundary_set);
     if (*low_boundary_set && *high_boundary_set) {
         normalize_boundaries(boundary_low, boundary_high, current_position);
     }
@@ -271,13 +277,15 @@ void handle_toggle(uint *low_boundary_set, uint *high_boundary_set, int *boundar
                    int *boundary_high, int *current_position, uint *automation_enabled,
                    uint gpio, uint32_t event) {
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
+    printf("handling toggle...\n");
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
-        if (!low_boundary_set || !high_boundary_set) {
+        if (!*low_boundary_set || !*high_boundary_set) {
             find_boundary(low_boundary_set, high_boundary_set, boundary_low,
                           boundary_high, current_position, gpio);
         } else {
+            printf("about to step indefinitely\n");
             step_indefinitely(current_position, *boundary_high, gpio);
         }
         // by now we're done with the falling action whether it's because
@@ -316,11 +324,11 @@ void handle_toggle(uint *low_boundary_set, uint *high_boundary_set, int *boundar
 
 void enable_automation(uint *automation_enabled) {
     *automation_enabled = 1;
-    // printf("automation state: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", *automation_enabled);  // rbf
 }
 
 
 void disable_automation(uint *automation_enabled) {
     *automation_enabled = 0;
-    // printf("automation state: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", *automation_enabled);  // rbf
 }
