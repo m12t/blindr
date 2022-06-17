@@ -18,7 +18,7 @@ void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int
     uint offset = pio_add_program(pio, &uart_rx_program);
 
     gnss_uart_tx_init(*baud_rate);
-    // wake_gnss();
+    wake_gnss();
 
     if (config_gnss) {
         configure_gnss(baud_rate, new_baud_rate);
@@ -71,7 +71,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
 
 void gnss_deinit(PIO pio, uint sm, uint offset) {
     printf("deinitializing gnss\n");  // rbf
-    // sleep_gnss();
+    sleep_gnss();
     gnss_uart_deinit();
     gnss_dma_deinit();
 
@@ -408,7 +408,7 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
     uint num_enables = sizeof(enable_identifiers) / sizeof(enable_identifiers[0]);
     char *messages[num_enables + num_disables + (new_baud_rate > 0)];  // +1 if the baud needs to be updated
 
-    // printf("Firing NMEA messages:\n----------------------\n\n");
+    printf("Firing NMEA messages:\n----------------------\n\n");
 
     if (new_baud_rate > 0) {  // new_baud_rate of -1 is used to ignore this and not update the baud
         char update_baud_rate[32];  // to be populated
@@ -451,9 +451,9 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
         compile_message(nmea_msg, messages[i], checksum, msg_terminator);  // assemble the components into the final msg
 
         fire_nmea_msg(nmea_msg);
-        // printf("%s\n", nmea_msg);
+        printf("%s\n", nmea_msg);
         if ((new_baud_rate != *baud_rate) && new_baud_rate > 0) {
-            // printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
+            printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
             uart_set_baudrate(UART_ID, new_baud_rate);
             *baud_rate = new_baud_rate;  // update the global baud
         }

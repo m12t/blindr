@@ -133,6 +133,7 @@ void read_actuate_alarm_sequence(int *boundary_low, int *boundary_high, int *cur
         config_gnss = 1;
         time_only = 0;
         *baud_rate = 9600;  // reset the starting baud to default so the config messages work
+        printf("in blindr updating baud to %d\n", *baud_rate);
         uart_set_baudrate(UART_ID, *baud_rate);
     }
 
