@@ -1,14 +1,9 @@
 #include "blindr.h"
 
-// todo: alarm_detected = 1. it's disabled to test toggle
-uint alarm_detected=1, toggle_detected=0;  // flag that gets set by the alarm callback to cause a runthrough of the gnss read, blind actuation, and next alarm setting sequence.
-uint toggle_gpio=-1;
-uint32_t toggle_event=-1;  // variables supplied by the toggle IRQ callback
-
-// blind variables
+// global vars
+uint alarm_detected=1;  // flag that gets set by the alarm callback to cause a runthrough of the gnss read, blind actuation, and next alarm setting sequence.
 uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
 int boundary_low=0, boundary_high=0, current_position=0;  // stepper positioning
-int solar_event = -1;       // flag for what the next solar_event is: 0=sunset, 1=sunrise, -1=NULL/Invalid
 uint automation_enabled = 1;  // flag useful for whether or not to operate the blinds automatically.
 
 int main(void) {
@@ -19,6 +14,7 @@ int main(void) {
     int north=-1, east=-1;
     int utc_offset;
     uint baud_rate=9600, new_baud=115200, gnss_configured=0, consec_conn_failures=0, data_found=0, time_only=0, config_gnss=1;
+    int solar_event = -1;       // flag for what the next solar_event is: 0=sunset, 1=sunrise, -1=NULL/Invalid
 
     // -------------------------------- initialize the stepper and toggle switch --------------------------------
     stdio_init_all();  // rbf - used for debugging
@@ -29,34 +25,13 @@ int main(void) {
     // -------------------------------- run the main program loop indefinitely --------------------------------
     while (1) {
         // keep the program alive indefinitely while listening for interrupts and handling them accordingly.
-        if (0) {
-            // // * check this first so that toggle switch gets priority over scheduled alarms since
-            // //   the timing on alarms can wait for human input to finish should they collide
-            // printf("toggle detected\n");
-            // toggle_detected = 0;
-            // printf("toggle_event: %d\n", toggle_event);
-            // uint gpio = toggle_gpio;
-            // uint32_t event = toggle_event;
-            // printf("just event: %d\n", event);
-            // toggle_event = -2;
-            // printf("should NOT be -2 event: %d\n", event);
-            // printf("SHOULD be -2 event: %d\n", toggle_event);
-            
-            // handle_toggle(&low_boundary_set, &high_boundary_set, &boundary_low,
-            //               &boundary_high, &current_position, &automation_enabled,
-            //               gpio, event);
-            // toggle_gpio = -1;
-            // toggle_event = -1;
-        } else if (alarm_detected) {
+       if (alarm_detected) {
             alarm_detected = 0;
-            read_actuate_alarm_sequence(boundary_low, boundary_high, &current_position, &solar_event,
-                                        automation_enabled, &latitude, &longitude, &north, &east,
+            read_actuate_alarm_sequence(&solar_event, &latitude, &longitude, &north, &east,
                                         &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
                                         &consec_conn_failures, &data_found, &time_only);
-
-        } else {
-            sleep_ms(250);  // doubles as the requisite switch bounce delay in the case of toggle_detected=1
         }
+        sleep_ms(60000);  // sleep for 1 min
     }
 }
 
@@ -67,8 +42,12 @@ void alarm_callback(void) {
 
 
 void toggle_callback(uint gpio, uint32_t event) {
+    // * unfortunately, this callback has to contain the toggle logic instead of simply
+    //   setting a flag that's caught in the main loop like alarm_callback(). The reason
+    //   is so that toggle can run concurrently with the gnss module. Otherwise,
+    //   it would be blocked by read_actuate_alarm_sequence()
     disable_all_interrupts_for(gpio);  // prevent further irqs while handling this one
-    // busy_wait_ms(100);
+    busy_wait_ms(100);    // combat switch bounce.
 
     if (event == 0x04) {
         // Falling edge detected. disable all interrupts until done
@@ -107,32 +86,31 @@ void toggle_callback(uint gpio, uint32_t event) {
         // both detected, ignore
         reenable_interrupts_for(gpio, 0x0C);
     }
-    set_automation_state();
+    set_automation_state();  // this is idempotent, so just call it every time.
 }
 
-void actuate(int boundary_low, int boundary_high,
-            int *current_position, int solar_event, uint automation_enabled) {
+
+void actuate(int solar_event) {
     if (automation_enabled) {
         if (solar_event == 1) {
             // it's a sunrise right now... open the blinds
-            step_to_position(current_position, (uint)(boundary_high - boundary_low) / 2, boundary_high);
+            step_to_position(&current_position, (uint)(boundary_high - boundary_low) / 2, boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds
-            step_to_position(current_position, 0, boundary_high);
+            step_to_position(&current_position, 0, boundary_high);
         }
     }
 }
 
 
-void read_actuate_alarm_sequence(int boundary_low, int boundary_high, int *current_position,
-                                 int *solar_event, uint automation_enabled, double *latitude,
-                                 double *longitude, int *north, int *east, int *utc_offset,
-                                 uint *baud_rate, uint new_baud, uint *gnss_configured, uint *config_gnss,
+void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *longitude,
+                                 int *north, int *east, int *utc_offset, uint *baud_rate,
+                                 uint new_baud, uint *gnss_configured, uint *config_gnss,
                                  uint *consec_conn_failures, uint *data_found, uint *time_only) {
     // handle the current alarm/solar_event and set the next one.
     uint gnss_read_successful = 0;
 
-    actuate(boundary_low, boundary_high, current_position, *solar_event, automation_enabled);
+    actuate(*solar_event);
 
     gnss_init(latitude, longitude, north, east, utc_offset, baud_rate, &gnss_read_successful,
               gnss_configured, *config_gnss, new_baud, *time_only, data_found);
@@ -221,25 +199,25 @@ void read_actuate_alarm_sequence(int boundary_low, int boundary_high, int *curre
         .sec   = 00
     };
 
-    /* ---------------- all the below can be deleted after testing ----------------  
-    int sleep_time = 10;
-    if (now.sec + sleep_time > 59) {  // for debugging only
-        min = now.min + 1;
-        sec = (now.sec + sleep_time) % 60;
-    } else {
-        min = now.min;
-        sec = now.sec + sleep_time;
-    }
-    datetime_t next_alarm = {  // for debugging multiple alarm cycles
-        .year  = now.year,
-        .month = now.month,
-        .day   = now.day,
-        .dotw  = now.dotw,
-        .hour  = now.hour,
-        .min   = min,
-        .sec   = sec
-    };
-     ---------------- all the above can be deleted after testing ---------------- */
+    // /* ---------------- all the below can be deleted after testing ----------------  */
+    // int sleep_time = 10;
+    // if (now.sec + sleep_time > 59) {  // for debugging only
+    //     min = now.min + 1;
+    //     sec = (now.sec + sleep_time) % 60;
+    // } else {
+    //     min = now.min;
+    //     sec = now.sec + sleep_time;
+    // }
+    // datetime_t next_alarm = {  // for debugging multiple alarm cycles
+    //     .year  = now.year,
+    //     .month = now.month,
+    //     .day   = now.day,
+    //     .dotw  = now.dotw,
+    //     .hour  = now.hour,
+    //     .min   = min,
+    //     .sec   = sec
+    // };
+    // /* ---------------- all the above can be deleted after testing ---------------- */
 
     if (*consec_conn_failures >= MAX_CONSEC_CONN_FAILURES) {
         printf("max consec failures reached. No further alarms will be set\n");

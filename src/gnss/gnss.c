@@ -152,7 +152,7 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
     int16_t year;
     int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
-        // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
         // printf("gnss fix: %d\n", *gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
