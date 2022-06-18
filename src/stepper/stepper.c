@@ -64,7 +64,7 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
             break;
         } else {
             // a valid step can be taken, do so:
-            single_step(current_position, direction, 500);
+            single_step(current_position, direction, 1500);
         }
     }
     sleep_stepper();
