@@ -17,8 +17,8 @@ int main(void) {
     int solar_event = -1;       // flag for what the next solar_event is: 0=sunset, 1=sunrise, -1=NULL/Invalid
 
     // -------------------------------- initialize the stepper and toggle switch --------------------------------
-    // stdio_init_all();  // rbf - used for debugging
-    // printf("blindr initializing...\n");
+    stdio_init_all();  // rbf - used for debugging
+    printf("blindr initializing...\n");
     stepper_init();
     toggle_init(&toggle_callback);
 
@@ -118,11 +118,11 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     if (gnss_read_successful) {
         *time_only = 1;  // now that the first runthrough has gathered lat/long, idempotently set time_only to true for future requests.
         *config_gnss = 0;
-        // printf("good read\n");
+        printf("good read\n");
     } else {
         // * the read failed. reset UART baud to the gnss module's
         //   default and set the flag to run the configuration on the module
-        // printf("unsuccessful read\n");
+        printf("unsuccessful read\n");
         consec_conn_failures += 1;
         *config_gnss = 1;
         *baud_rate = 9600;  // reset the starting baud to default so the config messages work
@@ -135,10 +135,10 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     int16_t year = now.year;
     int8_t month = now.month;
     int8_t day = now.day;
-    int8_t dotw = now.dotw;
     int8_t hour = now.hour;
     int8_t min = now.min;
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
+
 
     if (*solar_event == 1) {  // it's a sunrise right now
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -147,16 +147,14 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         hour = set_hour;
         min = set_minute;
     } else {
-        // * the next solar_event is a sunrise (or invalid) and will occur tomorrow. Get tomorrow's solar events:
-        //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
-        //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
-        today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
-        dotw = get_dotw(year, month, day);  // get tomorrow's day of the week using the freshly changed values for year, month, day
-
-        calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
-                               year, month, day, *utc_offset, *latitude, *longitude);
-
         if (*solar_event == 0) {  // it's a sunset right now
+            // * the next solar_event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
+            //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
+            //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
+            today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
+
+            calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                                   year, month, day, *utc_offset, *latitude, *longitude);
             *solar_event = 1;  // next alarm will be sunrise
             hour = rise_hour;
             min = rise_minute;
@@ -164,20 +162,28 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
             // the time is after both the sunrise and sunset (or there were neither)...
             // get the sunrise time tomorrow. In the edge case there is none (ie. high
             // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
-            if ((rise_hour || rise_minute) && (set_hour || set_minute)) {
-                // the is a valid solar_event today. find the next one (if applicable)
+            if (check_for_solar_events_today(year, month, day, *utc_offset, *latitude, *longitude)) {
+                // there is a valid solar_event today. find the next one (if applicable)
+                calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                                       year, month, day, *utc_offset, *latitude, *longitude);
                 if (rise_hour > now.hour || (rise_hour == now.hour && rise_minute > now.min)) {
+                    // the next solar event is a sunrise today.
                     *solar_event = 1;
                     hour = rise_hour;
                     min = rise_minute;
                 } else if (set_hour > now.hour || (set_hour == now.hour && set_minute > now.min)) {
+                    // the next solar event is a sunset today.
                     *solar_event = 0;
                     hour = set_hour;
                     min = set_minute;
                 } else {
-                    *solar_event = -1;  // it's after both sunrise and sunset for today, try again first thing tomorrow morning
-                    hour = 00;
-                    min = 01;
+                    // the next event is a rise tomorrow
+                    today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
+                    calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
+                                           year, month, day, *utc_offset, *latitude, *longitude);
+                    *solar_event = 1;
+                    hour = rise_hour;
+                    min = rise_minute;
                 }
             } else {
                 *solar_event = -1;  // no valid solar_event times were found, try again first thing tomorrow morning
@@ -192,7 +198,6 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         .year  = year,
         .month = month,
         .day   = day,
-        .dotw  = dotw,
         .hour  = hour,
         .min   = min,
         .sec   = 00
@@ -201,9 +206,9 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
         // set the next alarm. else abort alarm sequence.
         utils_set_rtc_alarm(&next_alarm, &alarm_callback);
-        // printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
-        // printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
-        //     next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
+        printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
+        printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
+            next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
     }
 }
 
@@ -229,29 +234,29 @@ void set_automation_state(void) {
 
 void normalize_boundaries(void) {
     // set low boundary to 0
-    // printf("normalizing...\n");  // rbf
-    // printf("current pos before: %d\n", current_position);  // rbf
-    // printf("--------------\n");  // rbf
+    printf("normalizing...\n");  // rbf
+    printf("current pos before: %d\n", current_position);  // rbf
+    printf("--------------\n");  // rbf
     current_position += abs(boundary_low);
     boundary_high += abs(boundary_low);
     boundary_low += abs(boundary_low);  // must do this *after* other shifts
-    // printf("new low boundary: %d\n", boundary_low);  // rbf
-    // printf("new high boundary: %d\n", boundary_high);  // rbf
-    // printf("current pos after: %d\n", current_position);  // rbf
+    printf("new low boundary: %d\n", boundary_low);  // rbf
+    printf("new high boundary: %d\n", boundary_high);  // rbf
+    printf("current pos after: %d\n", current_position);  // rbf
 }
 
 
 void find_boundary(uint gpio) {
-    // printf("finding boundary\n");
+    printf("finding boundary\n");
     // wait for down toggle
     // busy_wait_ms(100);  // combar switch bounce  -- not needed now that main loop has a delay
     int stepped = 0;
-    // printf("gpio: %d\n", gpio);
+    printf("gpio: %d\n", gpio);
     uint dir = gpio == GPIO_TOGGLE_UP_PIN ? 0 : 1;
-    // printf("dir: %d\n", dir);
+    printf("dir: %d\n", dir);
     wake_stepper();
     while (gpio_get(gpio) == 0) {
-        // printf("stepping\n");
+        printf("stepping\n");
         // while the switch is still pressed
         single_step(&current_position, dir, 1500);
         stepped = 1;
@@ -259,19 +264,19 @@ void find_boundary(uint gpio) {
     sleep_stepper();
     // update the respective boundary
     if (stepped && dir == 0) {
-        // printf("stepped in dir 0\n");
+        printf("stepped in dir 0\n");
         boundary_high = current_position;
         high_boundary_set = 1;
-        // printf("Upper boundary found: %d\n", boundary_high);  // rbf
+        printf("Upper boundary found: %d\n", boundary_high);  // rbf
     } else if (stepped && dir == 1) {
-        // printf("stepped in dir 1\n");
+        printf("stepped in dir 1\n");
         boundary_low = current_position;
         low_boundary_set = 1;
-        // printf("Lower boundary found: %d\n", boundary_low);  // rbf
+        printf("Lower boundary found: %d\n", boundary_low);  // rbf
     } else {
         // was just switch bounce, ignore it.
     }
-    // printf("low_boundary_set: %d, high_boundary_set: %d\n", low_boundary_set, high_boundary_set);
+    printf("low_boundary_set: %d, high_boundary_set: %d\n", low_boundary_set, high_boundary_set);
     if (low_boundary_set && high_boundary_set) {
         normalize_boundaries();
     }
@@ -280,11 +285,11 @@ void find_boundary(uint gpio) {
 
 void enable_automation(void) {
     automation_enabled = 1;
-    // printf("automation state: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", automation_enabled);  // rbf
 }
 
 
 void disable_automation(void) {
     automation_enabled = 0;
-    // printf("automation state: %d\n", automation_enabled);  // rbf
+    printf("automation state: %d\n", automation_enabled);  // rbf
 }

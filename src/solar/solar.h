@@ -33,3 +33,5 @@ double radToDeg(double angleRad);
 double calcDoyFromJD(double jd);
 double calcDateFromJD(double jd);
 double calcTimeJulianCent(double jd);
+int check_for_solar_events_today(int16_t year, int8_t month, int8_t day,
+                           		 int utc_offset, double latitude, double longitude);

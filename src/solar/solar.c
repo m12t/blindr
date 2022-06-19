@@ -187,3 +187,12 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     // printf("today's set is at:  %d/%d/%d  %d:%d:00\n", month, day, year, *set_hour, *set_minute);  // rbf
 
 }
+
+int check_for_solar_events_today(int16_t year, int8_t month, int8_t day,
+                           		 int utc_offset, double latitude, double longitude) {
+    int8_t rise_hour=0, rise_minute=0, set_hour=0, set_minute=0;
+	calculate_solar_events(&rise_hour, &rise_minute, &set_hour,
+						   &set_minute, year, month, day, utc_offset,
+						   latitude, longitude);
+	return (rise_hour || rise_minute || set_hour || set_minute);
+}

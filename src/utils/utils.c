@@ -7,8 +7,7 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
                      int8_t hour, int8_t min, int8_t sec) {
     /* receive datetime data and set the RTC to the current time */
     // printf("setting onboard rtc...\n");  // rbf
-    // printf("%d/%d/%d %d:%d:%d\n", month, day, year, hour, min, sec);
-    int8_t dotw = get_dotw(year, month, day);  // note: this happens *after* utc_offset shifts and any corrections.
+    int8_t dotw = get_dotw((uint)year, (uint)month, (uint)day);  // note: this happens *after* utc_offset shifts and any corrections.
     // construct the datetime_t struct and populte it data
     datetime_t dt = {
         .year = year,
@@ -27,8 +26,8 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
 
 
 int8_t get_dotw(int16_t year, int8_t month, int8_t day) {
-    // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
-    return (day += month < 3 ? year-- : year - 2, 23*month/9 + day + 4 + year/4- year/100 + year/400)%7;
+    // the formula used previously was causing problems...
+    return 0;
 }
 
 

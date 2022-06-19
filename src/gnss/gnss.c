@@ -35,19 +35,19 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
                            double *longitude, uint *north, uint *east, int *utc_offset,
                            uint *gnss_read_successful, uint *gnss_configured, uint time_only,
                            PIO pio, uint sm, uint offset, uint *gnss_fix, uint *data_found) {
-    // printf("managing gnss connection\n");
+    printf("managing gnss connection\n");
     char buffer_copy[BUFFER_LEN];
-    for (int i=0; i<6000; i++) {  // the main timeout loop of ~5 mins
-        // printf("%d--------------------------------\n", i);
-        busy_wait_ms(100);
+    for (int i=0; i<600; i++) {  // the main timeout loop of ~10 mins
+        printf("%d--------------------------------\n", i);
+        busy_wait_ms(1000);
         if (*gnss_read_successful) {
             *gnss_configured = 1;
             return 1;  // deinit was already called, simply return.
         }
         if (!buffer[0] || !buffer[BUFFER_LEN-1]) {  // crude check for some values being found
-            if (i > 300 && !*data_found) {
-                // printf("no signal found... this was buffer:\n----\n%s\n---\n", buffer);
-                // ~30 second timeout for any signal. if nothing detected on UART, abort.
+            if (i > 60 && !*data_found) {
+                printf("no signal found... this was buffer:\n----\n%s\n---\n", buffer);
+                // ~60 second timeout for any signal. if nothing detected on UART, abort.
                 gnss_deinit(pio, sm, offset);
                 return 0;
             }
@@ -65,7 +65,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
 
 
 void gnss_deinit(PIO pio, uint sm, uint offset) {
-    // printf("deinitializing gnss\n");  // rbf
+    printf("deinitializing gnss\n");  // rbf
     sleep_gnss();
     gnss_uart_deinit();
     gnss_dma_deinit();
@@ -77,7 +77,7 @@ void gnss_deinit(PIO pio, uint sm, uint offset) {
 
 
 void gnss_dma_init(char *buffer) {
-    // printf("initializing DMA\n");
+    printf("initializing DMA\n");
     dma_channel_claim(DMA_ID);
     dma_channel_config c = dma_channel_get_default_config(DMA_ID);
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);  // test if DMA_SIZE_8 works here... plus simplification of uart_rx
@@ -101,19 +101,19 @@ void gnss_dma_init(char *buffer) {
 
 
 void gnss_dma_deinit(void) {
-    // printf("deinitializing DMA\n");
+    printf("deinitializing DMA\n");
     if (dma_channel_is_busy(DMA_ID)) {
         dma_channel_abort(DMA_ID);  // CRITICAL SO THE NEXT DMA CAN START UP SUCCESSFULLY
     }
     if (dma_channel_is_claimed(DMA_ID)) {
-        // printf("UNCLAIMING>>>\n");
+        printf("UNCLAIMING>>>\n");
         dma_channel_unclaim(DMA_ID);
     }
 }
 
 
 void gnss_uart_tx_init(uint baud_rate) {
-    // printf("initializing UART\n");
+    printf("initializing UART\n");
     if (!uart_is_enabled(UART_ID)) {
         uart_init(UART_ID, baud_rate);
         gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
@@ -127,9 +127,9 @@ void gnss_uart_tx_init(uint baud_rate) {
 
 
 void gnss_uart_deinit(void) {
-    // printf("inside deinit UART...\n");
+    printf("inside deinit UART...\n");
     if (uart_is_enabled(UART_ID)) {
-        // printf("...deinitializing UART\n");
+        printf("...deinitializing UART\n");
         uart_deinit(UART_ID);
     }
     // TODO: deinit the pio as well...
@@ -144,15 +144,15 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
                   uint *north, uint *east, int *utc_offset,
                   uint *gnss_read_successful, uint time_only, PIO pio,
                   uint sm, uint offset, uint *gnss_fix) {
-    // printf("parsing...\n");
+    printf("parsing...\n");
     uint sentences_pos = 0;
-    split_buffer(buffer, sentences, sizeof(sentences)/sizeof(sentences[0]), &sentences_pos);
+    split_buffer(buffer, sentences, &sentences_pos);
     int i=0, valid=0, msg_type = 0, num_fields=0;
     int16_t year;
     int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
-        // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
-        // printf("gnss fix: %d\n", *gnss_fix);
+        printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        printf("gnss fix: %d\n", *gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
@@ -171,11 +171,11 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
             if (msg_type == 1) {
                 // always parse this as it has the `gnss_fix` flag
                 parse_gga(fields, latitude, north, longitude, east, gnss_fix, time_only);
-                // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
+                printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
             } else if (msg_type == 2 && *gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                // printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
+                printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                 if ((time_only || *latitude && *longitude) && year && month && day && (day || hour || sec)) {
                     // last check the values are atleast nonzero.
                     // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
@@ -184,8 +184,8 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
                     localize_datetime(&year, &month, &day, &hour, *utc_offset);
                     set_onboard_rtc(year, month, day, hour, min, sec);
                     // rtc is running and lat and long are set by nature of gnss_fix=1. deinitialize...
-                    // printf("final lat long: %f, %f\n", *latitude, *longitude);  // rbf
-                    // printf("final time: %d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
+                    printf("final lat long: %f, %f\n", *latitude, *longitude);  // rbf
+                    printf("final time: %d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                     *gnss_read_successful = 1;
                     gnss_deinit(pio, sm, offset);
                 }
@@ -196,31 +196,31 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
 }
 
 
-void split_buffer(char *buffer, char **sentences, int max_sentences, uint *sentences_pos) {
+void split_buffer(char *buffer, char **sentences, uint *sentences_pos) {
     /*
     split the monolithic buffer into discrete NMEA
     sentences which are terminated by <cr><lf> aka `\r\n`
     */
+    uint sentences_index = *sentences_pos;
     int i = 0;
-    int first_valid_index;
     char *bol, *eol;  // beginning of line, end of line
-    // printf("full buffer: %s\n", buffer);
-    bol = strchr(buffer, '$');  // remove all chars from the last incomplete sentence
+    printf("full buffer: %s\n", buffer);
+    printf("SENTENCES_LEN: %d\n", SENTENCES_LEN);
+    bol = strchr(buffer, '$');  // beginning of line. start at the first valid `$` char
     if (bol) {
-        first_valid_index = (int)(bol - buffer);
-        // printf("char at fvi: %c\n", buffer[first_valid_index]);
-        // printf("first valid index: %d\n", first_valid_index);
-        eol = strtok(&buffer[first_valid_index], "\n\r");
-        while (eol != NULL && i < max_sentences) {
-            sentences[*sentences_pos++] = eol;
-            *sentences_pos %= SENTENCES_LEN;
+        uint last_sentence_pos = sentences_index;
+        eol = strtok(bol, "\n\r");
+        while (eol != NULL && i < SENTENCES_LEN) {
+            last_sentence_pos = sentences_index;  // used to null out the last row later on.
+            sentences[sentences_index++] = eol;
+            sentences_index %= SENTENCES_LEN;
+            printf("postmod sentences_index: %d\n", sentences_index);
             eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
             i++;
         }
-        // for (int j=0; j < i; j++) {
-        //     printf("parsed: %s\n", sentences[j]);
-        // }
+        sentences[last_sentence_pos] = NULL;
     }
+    *sentences_pos = sentences_index;
 }
 
 
@@ -403,13 +403,13 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
     uint num_enables = sizeof(enable_identifiers) / sizeof(enable_identifiers[0]);
     char *messages[num_enables + num_disables + (new_baud_rate > 0)];  // +1 if the baud needs to be updated
 
-    // printf("Firing NMEA messages:\n----------------------\n\n");
+    printf("Firing NMEA messages:\n----------------------\n\n");
 
     if (new_baud_rate > 0) {  // new_baud_rate of -1 is used to ignore this and not update the baud
         char update_baud_rate[32];  // to be populated
         build_baud_msg(update_baud_rate, new_baud_rate);
         messages[msg_count++] = strdup(update_baud_rate);
-        // printf("update baud message: %s\n", update_baud_rate);
+        printf("update baud message: %s\n", update_baud_rate);
     }
 
     // construct the disabling messages
@@ -439,16 +439,16 @@ void configure_gnss(uint *baud_rate, uint new_baud_rate) {
         strcpy(checksum, "");  // initialize to empty string to avoid junk values
         sprintf(checksum, "%X", decimal_checksum);  // convert the decimal checksum to hexadecimal
         // itoa(cs, checksum, 16);  // alternative to sprintf()
-        // printf("%s", checksum);  // for debugging
+        printf("%s", checksum);  // for debugging
         char msg_terminator[] = "\r\n";  // NMEA sentence terminator <cr><lr> == "\r\n"
         char nmea_msg[strlen(messages[i]) + strlen(msg_terminator) + strlen(checksum)];  // placeholder for final message
         strcpy(nmea_msg, "");  // initialize to empty string to avoid junk values
         compile_message(nmea_msg, messages[i], checksum, msg_terminator);  // assemble the components into the final msg
 
         fire_nmea_msg(nmea_msg);
-        // printf("%s\n", nmea_msg);
+        printf("%s\n", nmea_msg);
         if ((new_baud_rate != *baud_rate) && new_baud_rate > 0) {
-            // printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
+            printf("updating the baud rate to: %d on message number: %d\n", new_baud_rate, i);
             uart_set_baudrate(UART_ID, new_baud_rate);
             *baud_rate = new_baud_rate;  // update the global baud
         }
@@ -463,7 +463,7 @@ void compile_message(char *nmea_msg, char *raw_msg,
     strcat(nmea_msg, raw_msg);     // add the base message
     strcat(nmea_msg, checksum);    // add the checksum
     strcat(nmea_msg, terminator);  // finally, add the termination sequence
-    // printf("\ncatted: %s\n", nmea_msg);
+    printf("\ncatted: %s\n", nmea_msg);
 }
 
 
@@ -477,12 +477,12 @@ void build_baud_msg(char *msg, uint new_baud) {
     strcat(msg, update_baud_prefix);
     strcat(msg, new_baud_buff);
     strcat(msg, update_baud_suffix);
-    // printf("built the new baud message: %s\n", msg);  // rbf
+    printf("built the new baud message: %s\n", msg);  // rbf
 }
 
 
 void fire_ubx_msg(uint8_t *msg, size_t msg_len) {
-    // printf("Firing UBX message 5 times...\n", msg);
+    printf("Firing UBX message 5 times...\n", msg);
     for (int i=0; i<5; i++) {
         uart_write_blocking(UART_ID, msg, msg_len);
         busy_wait_ms(i*10);
@@ -491,7 +491,7 @@ void fire_ubx_msg(uint8_t *msg, size_t msg_len) {
 
 
 void fire_nmea_msg(char *msg) {
-    // printf("Firing NMEA message: %s\n", msg);
+    printf("Firing NMEA message: %s\n", msg);
     for (int k=0; k<5; k++) {
         // send out the message multiple times. BAUD_RATE in particular needs this treatment.
         for (int i=0; i<strlen(msg); i++) {
@@ -504,7 +504,7 @@ void fire_nmea_msg(char *msg) {
 
 void wake_gnss(void) {
     // put the GNSS module in `continuous` mode
-    // printf("waking the gnss module\n");  // rbf
+    printf("waking the gnss module\n");  // rbf
     uint8_t wake_msg[] = {  // power on
         0xB5,0x62,0x02,0x41,0x10,0x00,0x00,0x00,0x00,0x00,
         0x00,0x00,0x00,0x00,0x06,0x00,0x00,0x00,0x08,0x00,
@@ -522,7 +522,7 @@ void wake_gnss(void) {
 
 void sleep_gnss(void) {
     // put the GNSS module in `power save` mode
-    // printf("sleeping the gnss module...\n");  // rbf
+    printf("sleeping the gnss module...\n");  // rbf
     uint8_t sleep_msg[] = {  // sleep indefinitely
         0xB5,0x62,0x02,0x41,0x08,0x00,0x00,0x00,0x00,0x00,
         0x02,0x00,0x00,0x00,0x4D,0x3B
@@ -533,7 +533,7 @@ void sleep_gnss(void) {
 
 
 void save_config(void) {
-    // printf("Saving gnss configurations to BBR...\n");
+    printf("Saving gnss configurations to BBR...\n");
     uint8_t cfg_save[] = {
         0xB5,0x62,0x06,0x09,0x0D,0x00,0x00,0x00,0x00,0x00,0xFF,
         0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0x1B,0xA9

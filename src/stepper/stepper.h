@@ -9,9 +9,9 @@
 #include "../toggle/toggle.h"   // for gpio toggle pins
 
 
-#define SLEEP_PIN 13
-#define STEP_PIN 14
-#define DIRECTION_PIN 15
+#define SLEEP_PIN 27
+#define STEP_PIN 26
+#define DIRECTION_PIN 22
 
 #endif
 
