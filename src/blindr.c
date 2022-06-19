@@ -130,7 +130,14 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     }
 
     datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
-    rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
+    // rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
+
+    now.year = 2022;
+    now.month = 6;
+    now.day = 19;
+    now.hour = 23;
+    now.min = 47;
+
 
     int16_t year = now.year;
     int8_t month = now.month;

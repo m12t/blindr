@@ -43,10 +43,10 @@ void gnss_uart_deinit(void);
 
 
 // data parsing functions
-void parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
-                  uint *north, uint *east, int *utc_offset,
-                  uint *gnss_read_successful, uint time_only, PIO pio,
-                  uint sm, uint offset, uint *gnss_fix);
+int parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
+                 uint *north, uint *east, int *utc_offset,
+                 uint *gnss_read_successful, uint time_only, PIO pio,
+                 uint sm, uint offset, uint *gnss_fix);
 void split_buffer(char *buffer, char **sentences, uint *sentences_pos);
 void parse_line(char *string, char **fields, int num_fields);
 void parse_utc_time(char *time, int8_t *hour, int8_t *min, int8_t *sec);

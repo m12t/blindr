@@ -140,10 +140,13 @@ void gnss_uart_deinit(void) {
 
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>> BEGIN DATA PARSING FUNCTIONS >>>>>>>>>>>>>>>>>>>>>>>>>>>> */
-void parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
-                  uint *north, uint *east, int *utc_offset,
-                  uint *gnss_read_successful, uint time_only, PIO pio,
-                  uint sm, uint offset, uint *gnss_fix) {
+int parse_buffer(char *buffer, char **sentences, double *latitude, double *longitude,
+                 uint *north, uint *east, int *utc_offset,
+                 uint *gnss_read_successful, uint time_only, PIO pio,
+                 uint sm, uint offset, uint *gnss_fix) {
+    if (*gnss_read_successful) {
+        return 0;
+    }
     printf("parsing...\n");
     uint sentences_pos = 0;
     split_buffer(buffer, sentences, &sentences_pos);
@@ -152,7 +155,7 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
     int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
         printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
-        printf("gnss fix: %d\n", *gnss_fix);
+        // printf("gnss fix: %d\n", *gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {
 			num_fields = 18;  // 1 more
@@ -171,11 +174,11 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
             if (msg_type == 1) {
                 // always parse this as it has the `gnss_fix` flag
                 parse_gga(fields, latitude, north, longitude, east, gnss_fix, time_only);
-                printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
+                // printf("lon: %f, lat: %f\n", longitude, latitude);  // rbf
             } else if (msg_type == 2 && *gnss_fix) {
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
-                printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
+                // printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
                 if ((time_only || *latitude && *longitude) && year && month && day && (day || hour || sec)) {
                     // last check the values are atleast nonzero.
                     // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
@@ -193,6 +196,7 @@ void parse_buffer(char *buffer, char **sentences, double *latitude, double *long
         }
 		i++;
 	}
+    return 1;
 }
 
 
@@ -201,26 +205,22 @@ void split_buffer(char *buffer, char **sentences, uint *sentences_pos) {
     split the monolithic buffer into discrete NMEA
     sentences which are terminated by <cr><lf> aka `\r\n`
     */
-    uint sentences_index = *sentences_pos;
     int i = 0;
     char *bol, *eol;  // beginning of line, end of line
-    printf("full buffer: %s\n", buffer);
-    printf("SENTENCES_LEN: %d\n", SENTENCES_LEN);
+    // printf("full buffer: %s\n", buffer);
     bol = strchr(buffer, '$');  // beginning of line. start at the first valid `$` char
     if (bol) {
-        uint last_sentence_pos = sentences_index;
+        uint last_sentence_pos = *sentences_pos;
         eol = strtok(bol, "\n\r");
         while (eol != NULL && i < SENTENCES_LEN) {
-            last_sentence_pos = sentences_index;  // used to null out the last row later on.
-            sentences[sentences_index++] = eol;
-            sentences_index %= SENTENCES_LEN;
-            printf("postmod sentences_index: %d\n", sentences_index);
+            last_sentence_pos = *sentences_pos;  // used to null out the last row later on.
+            sentences[(*sentences_pos)++] = eol;
+            *sentences_pos %= SENTENCES_LEN;
             eol = strtok(NULL, "\n\r");  // https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-strtok-tokenize-string
             i++;
         }
         sentences[last_sentence_pos] = NULL;
     }
-    *sentences_pos = sentences_index;
 }
 
 
