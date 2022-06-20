@@ -37,9 +37,9 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
                            PIO pio, uint sm, uint offset, uint *gnss_fix, uint *data_found) {
     // printf("managing gnss connection\n");
     char buffer_copy[BUFFER_LEN];
-    for (int i=0; i<600; i++) {  // the main timeout loop of ~10 mins
+    for (int i=0; i<6000; i++) {  // the main timeout loop of ~100 mins
         // printf("%d--------------------------------\n", i);
-        busy_wait_ms(1000);
+        sleep_ms(1000);
         if (*gnss_read_successful) {
             *gnss_configured = 1;
             return 1;  // deinit was already called, simply return.
@@ -93,7 +93,7 @@ void gnss_dma_init(char *buffer) {
         &c,
         buffer,                   // Write address (only need to set this once)
         &pio0->rxf,
-        (uint32_t)1e8,            // useful for a timeout in case dma_channel_abort() fails 1e8/115200 ~= 15 mins
+        (uint32_t)1e9,
         false
     );
     dma_channel_start(DMA_ID);
@@ -154,7 +154,7 @@ int parse_buffer(char *buffer, char **sentences, double *latitude, double *longi
     int16_t year;
     int8_t month, day, hour, min, sec;
 	while (sentences[i]) {
-        // printf("sentences[%d]: \n%s\n", i, sentences[i]);  // rbf
+        // printf("%s\n", sentences[i]);  // rbf
         // printf("gnss fix: %d\n", *gnss_fix);
         num_fields = 0;     // reset each iteration
 		if (strstr(sentences[i], "GGA")) {

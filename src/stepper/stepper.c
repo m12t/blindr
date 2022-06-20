@@ -51,6 +51,7 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
     // NOTE: this function can only be called once the boundary are already set
     //       since the startup routine automatically reads the initial toggle inputs
     //       as setting the lower and upper boundaries (in no particular order)
+    // printf("stepping indefinitely...\n");
     wake_stepper();
     uint direction = toggle_pin == GPIO_TOGGLE_UP_PIN ? 0 : 1;  // change to whatever pin ends up being used...
     while ((gpio_get(toggle_pin) == 0) &&
@@ -89,6 +90,7 @@ int step_to_position(int *current_position, uint desired_position, uint BOUNDARY
     uint direction;
 
     while (*current_position != desired_position) {
+        // printf("stepping to position\n");
         direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
         single_step(current_position, direction, 500);
     }

@@ -4,7 +4,7 @@
 uint alarm_detected=1;  // flag that gets set by the alarm callback to cause a runthrough of the gnss read, blind actuation, and next alarm setting sequence.
 uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
 int boundary_low=0, boundary_high=0, current_position=0;  // stepper positioning
-uint automation_enabled = 1;  // flag useful for whether or not to operate the blinds automatically.
+uint automation_enabled = 0;  // flag useful for whether or not to operate the blinds automatically.
 
 int main(void) {
     // -------------------------------- initialize main program vars --------------------------------
@@ -31,7 +31,7 @@ int main(void) {
                                         &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
                                         &consec_conn_failures, &data_found, &time_only);
         }
-        sleep_ms(60000);  // sleep for 1 min
+        sleep_ms(60);  // sleep for 1 min (60000)
     }
 }
 
@@ -91,13 +91,16 @@ void toggle_callback(uint gpio, uint32_t event) {
 
 
 void actuate(int solar_event) {
-    if (automation_enabled) {
+    if (automation_enabled && low_boundary_set && high_boundary_set) {
+        // printf("actuating the blinds automatically...\n");
         if (solar_event == 1) {
             // it's a sunrise right now... open the blinds
             step_to_position(&current_position, (uint)(boundary_high - boundary_low) / 2, boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds
             step_to_position(&current_position, 0, boundary_high);
+        } else {
+            // do nothing
         }
     }
 }
@@ -142,6 +145,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
 
 
     if (*solar_event == 1) {  // it's a sunrise right now
+        // printf("it's a sunrise now\n");
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                year, month, day, *utc_offset, *latitude, *longitude);
         *solar_event = 0;  // next alarm will be sunset
@@ -149,6 +153,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         min = set_minute;
     } else {
         if (*solar_event == 0) {  // it's a sunset right now
+            // printf("it's a sunset now\n");
             // * the next solar_event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
             //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
             //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
@@ -163,22 +168,27 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
             // the time is after both the sunrise and sunset (or there were neither)...
             // get the sunrise time tomorrow. In the edge case there is none (ie. high
             // latitudes around the summer solstice), sleep until 0:00 tomorrow and try again.
+            // printf("it's neither a sunrise or sunset...\n");
             if (check_for_solar_events_today(year, month, day, *utc_offset, *latitude, *longitude)) {
                 // there is a valid solar_event today. find the next one (if applicable)
+                // printf("there are solar events today...\n");
                 calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                        year, month, day, *utc_offset, *latitude, *longitude);
                 if (rise_hour > now.hour || (rise_hour == now.hour && rise_minute > now.min)) {
                     // the next solar event is a sunrise today.
+                    // printf("it's still before the sunrise today...\n");
                     *solar_event = 1;
                     hour = rise_hour;
                     min = rise_minute;
                 } else if (set_hour > now.hour || (set_hour == now.hour && set_minute > now.min)) {
                     // the next solar event is a sunset today.
+                    // printf("it's still before the sunset today...\n");
                     *solar_event = 0;
                     hour = set_hour;
                     min = set_minute;
                 } else {
                     // the next event is a rise tomorrow
+                    // printf("it's after both sunrise and sunset today...\n");
                     today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
                     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                            year, month, day, *utc_offset, *latitude, *longitude);
@@ -187,6 +197,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                     min = rise_minute;
                 }
             } else {
+                // printf("there are NO solar events today...\n");
                 *solar_event = -1;  // no valid solar_event times were found, try again first thing tomorrow morning
                 hour = 00;
                 min = 01;
@@ -195,6 +206,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
 
     }
 
+    // printf("solar_event: %d\n", *solar_event);
     datetime_t next_alarm = {  // the `real` version
         .year  = year,
         .month = month,
