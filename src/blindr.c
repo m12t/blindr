@@ -31,7 +31,7 @@ int main(void) {
                                         &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
                                         &consec_conn_failures, &data_found, &time_only);
         }
-        sleep_ms(60);  // sleep for 1 min (60000)
+        sleep_ms(60);  // sleep for 1 min
     }
 }
 
