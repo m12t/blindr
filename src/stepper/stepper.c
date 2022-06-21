@@ -92,7 +92,7 @@ int step_to_position(int *current_position, uint desired_position, uint BOUNDARY
     while (*current_position != desired_position) {
         // printf("stepping to position\n");
         direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
-        single_step(current_position, direction, 500);
+        single_step(current_position, direction, 250);
     }
 
     sleep_stepper();

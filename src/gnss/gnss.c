@@ -16,7 +16,7 @@ void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int
     uint offset = pio_add_program(pio, &uart_rx_program);
 
     gnss_uart_tx_init(*baud_rate);
-    wake_gnss();
+    // wake_gnss();
 
     if (config_gnss) {
         configure_gnss(baud_rate, new_baud_rate);
@@ -66,7 +66,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
 
 void gnss_deinit(PIO pio, uint sm, uint offset) {
     // printf("deinitializing gnss\n");  // rbf
-    sleep_gnss();
+    // sleep_gnss();
     gnss_uart_deinit();
     gnss_dma_deinit();
 

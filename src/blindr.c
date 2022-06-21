@@ -54,7 +54,7 @@ void toggle_callback(uint gpio, uint32_t event) {
         if (!low_boundary_set || !high_boundary_set) {
             find_boundary(gpio);
         } else {
-            step_indefinitely(&current_position, boundary_high, gpio);
+            step_indefinitely(&current_position, (uint)boundary_high, gpio);
         }
         // by now we're done with the falling action whether it's because
         // we reached a boundary of the blinds or because of a rising edge.
@@ -95,10 +95,10 @@ void actuate(int solar_event) {
         // printf("actuating the blinds automatically...\n");
         if (solar_event == 1) {
             // it's a sunrise right now... open the blinds
-            step_to_position(&current_position, (uint)(boundary_high - boundary_low) / 2, boundary_high);
+            step_to_position(&current_position, (uint)(boundary_high/2), (uint)boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds
-            step_to_position(&current_position, 0, boundary_high);
+            step_to_position(&current_position, 0, (uint)boundary_high);
         } else {
             // do nothing
         }
@@ -135,14 +135,12 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
     rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
 
-
     int16_t year = now.year;
     int8_t month = now.month;
     int8_t day = now.day;
     int8_t hour = now.hour;
     int8_t min = now.min;
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
-
 
     if (*solar_event == 1) {  // it's a sunrise right now
         // printf("it's a sunrise now\n");
@@ -203,7 +201,6 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                 min = 01;
             }
         }
-
     }
 
     // printf("solar_event: %d\n", *solar_event);
@@ -245,17 +242,35 @@ void set_automation_state(void) {
 }
 
 
+void dance(uint sleep_time) {
+    // quickly step to the boundaries. Used to provide feedback when boundaries are found
+    // and optionally on gnss fix.
+    uint starting_pos = current_position;
+    step_to_position(&current_position, (uint)(boundary_high/2), boundary_high);
+    busy_wait_ms(sleep_time);
+    step_to_position(&current_position, boundary_low, boundary_high);
+    busy_wait_ms(sleep_time);
+    step_to_position(&current_position, boundary_high, boundary_high);
+    busy_wait_ms(sleep_time);
+    step_to_position(&current_position, (uint)(boundary_high/2), boundary_high);
+    busy_wait_ms(2 * sleep_time);
+    step_to_position(&current_position, starting_pos, boundary_high);
+}
+
+
 void normalize_boundaries(void) {
     // set low boundary to 0
     // printf("normalizing...\n");  // rbf
     // printf("current pos before: %d\n", current_position);  // rbf
     // printf("--------------\n");  // rbf
-    current_position += abs(boundary_low);
-    boundary_high += abs(boundary_low);
-    boundary_low += abs(boundary_low);  // must do this *after* other shifts
+    // printf("before: %d to %d\n", boundary_low, boundary_high);
+    boundary_high -= boundary_low;
+    current_position -= boundary_low;
+    boundary_low = 0;
     // printf("new low boundary: %d\n", boundary_low);  // rbf
     // printf("new high boundary: %d\n", boundary_high);  // rbf
     // printf("current pos after: %d\n", current_position);  // rbf
+    dance(250);
 }
 
 

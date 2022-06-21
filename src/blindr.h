@@ -7,7 +7,7 @@
 #include "toggle.h"
 #include "solar.h"
 
-#define MAX_CONSEC_CONN_FAILURES 3
+#define MAX_CONSEC_CONN_FAILURES 6
 
 
 void alarm_callback(void);
@@ -24,5 +24,6 @@ void normalize_boundaries(void);
 void find_boundary(uint gpio);
 void enable_automation(void);
 void disable_automation(void);
+void dance(uint sleep_time);
 
 #endif
