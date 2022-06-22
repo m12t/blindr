@@ -37,6 +37,7 @@ int is_leapyear(int16_t year) {
     return ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0);
 }
 
+
 uint last_day_of_month_on(int8_t month, int16_t year) {
     // return the last valid day of a given month
     switch (month) {
@@ -71,6 +72,7 @@ uint last_day_of_month_on(int8_t month, int16_t year) {
     }
 }
 
+
 void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
     if (*day == 1) {
         // it's the first of the month, yesterday was the last of the previous month
@@ -91,6 +93,7 @@ void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour,
     *hour = 24 - abs(*hour + utc_offset);
 }
 
+
 void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
     if (*day == last_day_of_month_on(*month, *year)) {
         if (*month == 12) {
@@ -107,6 +110,7 @@ void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, 
     }
     *hour = (*hour + utc_offset) - 24;  // `(hour + utc_offset) % 24` would also work
 }
+
 
 void localize_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset) {
     // must call this before get_dotw()!
@@ -125,6 +129,7 @@ void localize_datetime(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, 
 void utils_get_rtc_datetime(datetime_t *dt) {
     rtc_get_datetime(dt);
 }
+
 
 void utils_set_rtc_alarm(datetime_t *alarm, rtc_callback_t callback) {
     rtc_set_alarm(alarm, callback);

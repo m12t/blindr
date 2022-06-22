@@ -34,7 +34,7 @@ int main(void) {
             reenable_interrupts_for(GPIO_TOGGLE_UP_PIN, 0x0C);
             reenable_interrupts_for(GPIO_TOGGLE_DOWN_PIN, 0x0C);
         }
-        sleep_ms(30);  // 30000
+        sleep_ms(30000);  // sleep for 30 seconds. Being 30s late to a solar event is acceptable. Toggle IRQs are immediate.
     }
 }
 
@@ -221,32 +221,6 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         .sec   = 00
     };
 
-    // for debugging ---
-    // hour = now.hour;
-    // uint sleep_time = 30, sec;
-    // min = now.min;
-    // if ((now.sec + 30) > 60) {
-    //     sec = (sec + 30) % 60;
-    //     if ((min + 1) >= 60) {
-    //         hour += 1;
-    //         min = 0;
-    //     } else {
-    //         min += 1;
-    //     }
-    // } else {
-    //     sec = now.sec + 30;
-    // }
-
-    // datetime_t next_alarm = {  // the `real` version
-    //     .year  = now.year,
-    //     .month = now.month,
-    //     .day   = now.day,
-    //     .hour  = hour,
-    //     .min   = min,
-    //     .sec   = sec
-    // };
-    // ------- for debugging
-
     if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
         // set the next alarm. else abort alarm sequence.
         utils_set_rtc_alarm(&next_alarm, &alarm_callback);
@@ -257,6 +231,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     }
 }
 
+
 void disable_all_interrupts_for(uint gpio) {
     gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);  // disable further interrupts during execution to mitigate mechanical switch bounce
 }
@@ -265,6 +240,7 @@ void disable_all_interrupts_for(uint gpio) {
 void reenable_interrupts_for(uint gpio, int event) {
     gpio_set_irq_enabled_with_callback(gpio, event, true, &toggle_callback);
 }
+
 
 void set_automation_state(void) {
     // read the state of the toggle gpio pins

@@ -8,9 +8,11 @@ double radToDeg(double angleRad) {
 	return (180.0 * angleRad / PI);
 }
 
+
 double degToRad(double angleDeg) {
 	return (PI * angleDeg / 180.0);
 }
+
 
 double calcGeomMeanLongSun(double t) {
 	double L0 = 280.46646 + t * (36000.76983 + t*(0.0003032));
@@ -23,15 +25,18 @@ double calcGeomMeanLongSun(double t) {
 	return L0;		// in degrees
 }
 
+
 double calcGeomMeanAnomalySun(double t) {
 	double M = 357.52911 + t * (35999.05029 - 0.0001537 * t);
 	return M;		// in degrees
 }
 
+
 double calcEccentricityEarthOrbit(double t) {
 	double e = 0.016708634 - t * (0.000042037 + 0.0000001267 * t);
 	return e;		// unitless
 }
+
 
 double calcSunEqOfCenter(double t) {
 	double m = calcGeomMeanAnomalySun(t);
@@ -43,12 +48,14 @@ double calcSunEqOfCenter(double t) {
 	return C;		// in degrees
 }
 
+
 double calcSunTrueLong(double t) {
 	double l0 = calcGeomMeanLongSun(t);
 	double c = calcSunEqOfCenter(t);
 	double O = l0 + c;
 	return O;		// in degrees
 }
+
 
 double calcSunApparentLong(double t) {
 	double o = calcSunTrueLong(t);
@@ -57,11 +64,13 @@ double calcSunApparentLong(double t) {
 	return lambda;		// in degrees
 }
 
+
 double calcMeanObliquityOfEcliptic(double t) {
 	double seconds = 21.448 - t*(46.8150 + t*(0.00059 - t*(0.001813)));
 	double e0 = 23.0 + (26.0 + (seconds/60.0))/60.0;
 	return e0;		// in degrees
 }
+
 
 double calcObliquityCorrection(double t) {
 	double e0 = calcMeanObliquityOfEcliptic(t);
@@ -69,6 +78,7 @@ double calcObliquityCorrection(double t) {
 	double e = e0 + 0.00256 * cos(degToRad(omega));
 	return e;		// in degrees
 }
+
 
 double calcSunRtAscension(double t) {
 	double e = calcObliquityCorrection(t);
@@ -79,6 +89,7 @@ double calcSunRtAscension(double t) {
 	return alpha;		// in degrees
 }
 
+
 double calcSunDeclination(double t) {
 	double e = calcObliquityCorrection(t);
 	double lambda = calcSunApparentLong(t);
@@ -86,6 +97,7 @@ double calcSunDeclination(double t) {
 	double theta = radToDeg(asin(sint));
 	return theta;		// in degrees
 }
+
 
 double calcEquationOfTime(double t) {
 	double epsilon = calcObliquityCorrection(t);
@@ -106,6 +118,7 @@ double calcEquationOfTime(double t) {
 	return radToDeg(Etime)*4.0;	// in minutes of time
 }
 
+
 double getJD(int16_t year, int8_t month, int8_t day) {
 	if (month <= 2) {
 		year -= 1;
@@ -117,10 +130,12 @@ double getJD(int16_t year, int8_t month, int8_t day) {
 	return JD;
 }
 
+
 double calcTimeJulianCent(double jd) {
 	double T = (jd - 2451545.0)/36525.0;
 	return T;
 }
+
 
 double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude) {
 	double t = calcTimeJulianCent(JD);
@@ -133,6 +148,7 @@ double calcSunriseSetUTC(double rise, double JD, double latitude, double longitu
 
 	return timeUTC;
 }
+
 
 double calcHourAngleSunrise(double lat, double solarDec) {
 	double latRad = degToRad(lat);
@@ -166,6 +182,7 @@ double calcSunriseSet(double rise, double JD, double latitude, double longitude,
     return timeLocal;
 }
 
+
 void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
                             int8_t *set_hour, int8_t *set_minute,
                             int16_t year, int8_t month, int8_t day,
@@ -187,6 +204,7 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
     // printf("today's set is at:  %d/%d/%d  %d:%d:00\n", month, day, year, *set_hour, *set_minute);  // rbf
 
 }
+
 
 int check_for_solar_events_today(int16_t year, int8_t month, int8_t day,
                            		 int utc_offset, double latitude, double longitude) {
