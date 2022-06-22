@@ -25,18 +25,24 @@ int main(void) {
     // -------------------------------- run the main program loop indefinitely --------------------------------
     while (1) {
         // keep the program alive indefinitely while listening for interrupts and handling them accordingly.
-       if (alarm_detected) {
+        if (alarm_detected) {
             alarm_detected = 0;
+            // printf("alarm caught!\n");
             read_actuate_alarm_sequence(&solar_event, &latitude, &longitude, &north, &east,
                                         &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
                                         &consec_conn_failures, &data_found, &time_only);
+            reenable_interrupts_for(GPIO_TOGGLE_UP_PIN, 0x0C);
+            reenable_interrupts_for(GPIO_TOGGLE_DOWN_PIN, 0x0C);
         }
-        sleep_ms(60);  // sleep for 1 min
+        sleep_ms(30);  // 30000
     }
 }
 
 
 void alarm_callback(void) {
+    rtc_disable_alarm();
+    disable_all_interrupts_for(GPIO_TOGGLE_UP_PIN);  // prevent further irqs while handling this one
+    disable_all_interrupts_for(GPIO_TOGGLE_DOWN_PIN);  // prevent further irqs while handling this one
     alarm_detected = 1;
 }
 
@@ -98,11 +104,12 @@ void actuate(int solar_event) {
             step_to_position(&current_position, (uint)(boundary_high/2), (uint)boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds
-            step_to_position(&current_position, 0, (uint)boundary_high);
+            step_to_position(&current_position, (uint)boundary_low, (uint)boundary_high);
         } else {
             // do nothing
         }
     }
+    // printf("current position after (potential) actuation: %d\n", current_position);
 }
 
 
@@ -111,6 +118,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                                  uint new_baud, uint *gnss_configured, uint *config_gnss,
                                  uint *consec_conn_failures, uint *data_found, uint *time_only) {
     // handle the current alarm/solar_event and set the next one.
+    // printf("inside of read_actuate_alarm_sequence()!\n");
     uint gnss_read_successful = 0;
 
     actuate(*solar_event);
@@ -203,7 +211,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         }
     }
 
-    // printf("solar_event: %d\n", *solar_event);
+    // printf("next solar_event: %d\n", *solar_event);
     datetime_t next_alarm = {  // the `real` version
         .year  = year,
         .month = month,
@@ -213,9 +221,36 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         .sec   = 00
     };
 
+    // for debugging ---
+    // hour = now.hour;
+    // uint sleep_time = 30, sec;
+    // min = now.min;
+    // if ((now.sec + 30) > 60) {
+    //     sec = (sec + 30) % 60;
+    //     if ((min + 1) >= 60) {
+    //         hour += 1;
+    //         min = 0;
+    //     } else {
+    //         min += 1;
+    //     }
+    // } else {
+    //     sec = now.sec + 30;
+    // }
+
+    // datetime_t next_alarm = {  // the `real` version
+    //     .year  = now.year,
+    //     .month = now.month,
+    //     .day   = now.day,
+    //     .hour  = hour,
+    //     .min   = min,
+    //     .sec   = sec
+    // };
+    // ------- for debugging
+
     if (*consec_conn_failures < MAX_CONSEC_CONN_FAILURES) {
         // set the next alarm. else abort alarm sequence.
         utils_set_rtc_alarm(&next_alarm, &alarm_callback);
+        rtc_enable_alarm();
         // printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         // printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
         //     next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
@@ -259,7 +294,6 @@ void dance(uint sleep_time) {
 
 
 void normalize_boundaries(void) {
-    // set low boundary to 0
     // printf("normalizing...\n");  // rbf
     // printf("current pos before: %d\n", current_position);  // rbf
     // printf("--------------\n");  // rbf
@@ -270,14 +304,14 @@ void normalize_boundaries(void) {
     // printf("new low boundary: %d\n", boundary_low);  // rbf
     // printf("new high boundary: %d\n", boundary_high);  // rbf
     // printf("current pos after: %d\n", current_position);  // rbf
-    dance(250);
+    dance(100);  // confirm boundaries are set
 }
 
 
 void find_boundary(uint gpio) {
     // printf("finding boundary\n");
     // wait for down toggle
-    // busy_wait_ms(100);  // combar switch bounce  -- not needed now that main loop has a delay
+    busy_wait_ms(100);  // combar switch bounce
     int stepped = 0;
     // printf("gpio: %d\n", gpio);
     uint dir = gpio == GPIO_TOGGLE_UP_PIN ? 0 : 1;

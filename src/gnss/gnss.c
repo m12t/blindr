@@ -16,7 +16,7 @@ void gnss_init(double *latitude, double *longitude, uint *north, uint *east, int
     uint offset = pio_add_program(pio, &uart_rx_program);
 
     gnss_uart_tx_init(*baud_rate);
-    // wake_gnss();
+    wake_gnss();
 
     if (config_gnss) {
         configure_gnss(baud_rate, new_baud_rate);
@@ -35,8 +35,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
                            double *longitude, uint *north, uint *east, int *utc_offset,
                            uint *gnss_read_successful, uint *gnss_configured, uint time_only,
                            PIO pio, uint sm, uint offset, uint *gnss_fix, uint *data_found) {
-    // printf("managing gnss connection\n");
-    char buffer_copy[BUFFER_LEN];
+    // printf("managing gnss connection.....\n");
     for (int i=0; i<6000; i++) {  // the main timeout loop of ~100 mins
         // printf("%d--------------------------------\n", i);
         sleep_ms(1000);
@@ -55,8 +54,8 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
             // copy buffer to avoid race condition
             *data_found = 1;
             *gnss_configured = 1;
-            memcpy(buffer_copy, buffer, BUFFER_LEN);  // duplicate the buffer to avoid a race with DMA
-            parse_buffer(buffer_copy, sentences, latitude, longitude, north, east, utc_offset,
+            // use strdup to create a duplicate buffer to avoid a race with DMA
+            parse_buffer(strdup(buffer), sentences, latitude, longitude, north, east, utc_offset,
                          gnss_read_successful, time_only, pio, sm, offset, gnss_fix);
         }
     }
@@ -66,7 +65,7 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
 
 void gnss_deinit(PIO pio, uint sm, uint offset) {
     // printf("deinitializing gnss\n");  // rbf
-    // sleep_gnss();
+    sleep_gnss();
     gnss_uart_deinit();
     gnss_dma_deinit();
 
@@ -106,7 +105,7 @@ void gnss_dma_deinit(void) {
         dma_channel_abort(DMA_ID);  // CRITICAL SO THE NEXT DMA CAN START UP SUCCESSFULLY
     }
     if (dma_channel_is_claimed(DMA_ID)) {
-        // printf("UNCLAIMING>>>\n");
+        // printf("unclaiming DMA channel\n");
         dma_channel_unclaim(DMA_ID);
     }
 }
@@ -132,7 +131,6 @@ void gnss_uart_deinit(void) {
         // printf("...deinitializing UART\n");
         uart_deinit(UART_ID);
     }
-    // TODO: deinit the pio as well...
 }
 
 

@@ -128,4 +128,5 @@ void utils_get_rtc_datetime(datetime_t *dt) {
 
 void utils_set_rtc_alarm(datetime_t *alarm, rtc_callback_t callback) {
     rtc_set_alarm(alarm, callback);
+    rtc_enable_alarm();
 }
