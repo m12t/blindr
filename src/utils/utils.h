@@ -1,7 +1,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <stdio.h>           // rbf
+// #include <stdio.h>           // rbf
 #include <stdint.h>          // for int8_t and int16_t
 #include <stdlib.h>          // for abs()
 #include "hardware/rtc.h"    // for initializing and setting the RTC

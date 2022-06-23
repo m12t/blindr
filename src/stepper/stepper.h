@@ -1,7 +1,7 @@
 #ifndef STEPPER_H
 #define STEPPER_H
 
-#include <stdio.h>              // rbf
+// #include <stdio.h>              // rbf
 #include <stdlib.h>             // needed??
 #include <stdint.h>             // needed for int8_t and int16_t
 #include <ctype.h>              // needed???
