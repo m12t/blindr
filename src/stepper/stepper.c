@@ -45,7 +45,7 @@ void single_step(int *current_position, uint direction, uint sleep_time) {
 }
 
 
-int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin) {
+int step_indefinitely(int *current_position, int BOUNDARY_HIGH, uint toggle_pin) {
     // alternate to single_step() where this function reads the toggle switch value
     // directly and also modifies the current position automatically.
     // NOTE: this function can only be called once the boundary are already set
@@ -72,7 +72,7 @@ int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin
 }
 
 
-int step_to_position(int *current_position, uint desired_position, uint BOUNDARY_HIGH) {
+int step_to_position(int *current_position, int desired_position, int BOUNDARY_HIGH) {
     // receive the current position, desired_position, and high boundary (low boundary is normalized to 0)
     // and step to the desired destination, updating the current position pointer along the way
     // return 0 for no action taken, 1 for step(s) were performed. It's not necessary to return the number

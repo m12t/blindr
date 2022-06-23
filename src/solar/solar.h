@@ -13,7 +13,7 @@ void calculate_solar_events(int8_t *rise_hour, int8_t *rise_minute,
                             int8_t *set_hour, int8_t *set_minute,
                             int16_t year, int8_t month, int8_t day,
                             int utc_offset, double latitude, double longitude);
-double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone);
+double calcSunriseSet(double rise, double JD, double latitude, double longitude, int timezone);
 double calcSunriseSetUTC(double rise, double JD, double latitude, double longitude);
 double getJD(int16_t year, int8_t month, int8_t day);
 double calcHourAngleSunrise(double lat, double solarDec);

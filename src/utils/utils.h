@@ -10,7 +10,7 @@
 #endif
 
 void set_onboard_rtc(int16_t year, int8_t month, int8_t day, int8_t hour, int8_t min, int8_t sec);
-int8_t get_dotw(int16_t year, int8_t month, int8_t day);
+int8_t get_dotw(int16_t y, int8_t m, int8_t d);
 int is_leapyear(int16_t year);
 uint last_day_of_month_on(int8_t month, int16_t year);
 void today_is_yesterday(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, int utc_offset);

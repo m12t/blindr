@@ -20,5 +20,5 @@ void stepper_init(void);
 void wake_stepper();
 void sleep_stepper();
 void single_step(int *current_position, uint direction, uint sleep_time);
-int step_indefinitely(int *current_position, uint BOUNDARY_HIGH, uint toggle_pin);
-int step_to_position(int *current_position, uint desired_position, uint BOUNDARY_HIGH);
+int step_indefinitely(int *current_position, int BOUNDARY_HIGH, uint toggle_pin);
+int step_to_position(int *current_position, int desired_position, int BOUNDARY_HIGH);

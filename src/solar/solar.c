@@ -159,14 +159,13 @@ double calcHourAngleSunrise(double lat, double solarDec) {
 }
 
 
-double calcSunriseSet(double rise, double JD, double latitude, double longitude, double timezone) {
+double calcSunriseSet(double rise, double JD, double latitude, double longitude, int timezone) {
     // rise = 1 for sunrise, 0 for sunset
 	double timeUTC = calcSunriseSetUTC(rise, JD, latitude, longitude);
 	double newTimeUTC = calcSunriseSetUTC(rise, JD + timeUTC/1440.0, latitude, longitude); 
     double timeLocal;
 	if (newTimeUTC) {
 		timeLocal = newTimeUTC + (timezone * 60.0);
-		double riseT = calcTimeJulianCent(JD + newTimeUTC/1440.0);
 		double jday = JD;
 		if ( (timeLocal < 0.0) || (timeLocal >= 1440.0) ) {
 			double increment = ((timeLocal < 0) ? 1 : -1);
@@ -175,7 +174,6 @@ double calcSunriseSet(double rise, double JD, double latitude, double longitude,
 				jday -= increment;
 			}
 		}
-
 	} else { // no sunrise/set found
         return 0.0;
     }

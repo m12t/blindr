@@ -7,13 +7,13 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
                      int8_t hour, int8_t min, int8_t sec) {
     /* receive datetime data and set the RTC to the current time */
     // printf("setting onboard rtc...\n");  // rbf
-    int8_t dotw = get_dotw((uint)year, (uint)month, (uint)day);  // note: this happens *after* utc_offset shifts and any corrections.
+    int8_t dotw = get_dotw(year, month, day);  // note: this happens *after* utc_offset shifts and any corrections.
     // construct the datetime_t struct and populte it data
     datetime_t dt = {
         .year = year,
         .month = month,
         .day = day,
-        .dotw = dotw,
+        .dotw = dotw,  // 0 is Sunday, so 5 is Frida
         .hour = hour,
         .min = min,
         .sec = sec,
@@ -25,9 +25,14 @@ void set_onboard_rtc(int16_t year, int8_t month, int8_t day,
 }
 
 
-int8_t get_dotw(int16_t year, int8_t month, int8_t day) {
-    // the formula used previously was causing problems...
-    return 0;
+int8_t get_dotw(int16_t y, int8_t m, int8_t d) {
+    // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Sakamoto's_methods
+    // RTC expects that 0 is Sunday, 5 is Friday, which is exactly as output from this equation
+    int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+    if ( m < 3 ) {
+        y -= 1;
+    }
+    return (y + y/4 - y/100 + y/400 + t[m-1] + d) % 7;
 }
 
 
@@ -68,7 +73,6 @@ uint last_day_of_month_on(int8_t month, int16_t year) {
             return 30;
         case 12:
             return 31;
-
     }
 }
 
@@ -108,7 +112,7 @@ void today_is_tomorrow(int16_t *year, int8_t *month, int8_t *day, int8_t *hour, 
         // day is a regular month day, simply subtract 1
         *day += 1;
     }
-    *hour = (*hour + utc_offset) - 24;  // `(hour + utc_offset) % 24` would also work
+    *hour = (*hour + utc_offset) % 24;
 }
 
 

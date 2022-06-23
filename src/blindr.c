@@ -60,7 +60,7 @@ void toggle_callback(uint gpio, uint32_t event) {
         if (!low_boundary_set || !high_boundary_set) {
             find_boundary(gpio);
         } else {
-            step_indefinitely(&current_position, (uint)boundary_high, gpio);
+            step_indefinitely(&current_position, boundary_high, gpio);
         }
         // by now we're done with the falling action whether it's because
         // we reached a boundary of the blinds or because of a rising edge.
@@ -101,10 +101,10 @@ void actuate(int solar_event) {
         // printf("actuating the blinds automatically...\n");
         if (solar_event == 1) {
             // it's a sunrise right now... open the blinds
-            step_to_position(&current_position, (uint)(boundary_high/2), (uint)boundary_high);
+            step_to_position(&current_position, boundary_high/2, boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds
-            step_to_position(&current_position, (uint)boundary_low, (uint)boundary_high);
+            step_to_position(&current_position, boundary_low, boundary_high);
         } else {
             // do nothing
         }
@@ -125,7 +125,6 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
 
     gnss_init(latitude, longitude, north, east, utc_offset, baud_rate, &gnss_read_successful,
               gnss_configured, *config_gnss, new_baud, *time_only, data_found);
-
     if (gnss_read_successful) {
         *time_only = 1;  // now that the first runthrough has gathered lat/long, idempotently set time_only to true for future requests.
         *config_gnss = 0;
@@ -140,14 +139,14 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         uart_set_baudrate(UART_ID, *baud_rate);
     }
 
-    datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) calls
-    rtc_get_datetime(&now);    // grab the year, month, day for the solar calculations below
-
+    datetime_t now = { 0 };    // blank datetime struct to be pupulated by get_rtc_datetime(&now) call
+    rtc_get_datetime(&now);    // grab the year, month, day, dotw
     int16_t year = now.year;
     int8_t month = now.month;
-    int8_t day = now.day;
-    int8_t hour = now.hour;
-    int8_t min = now.min;
+    int8_t day   = now.day;
+    int8_t dotw  = now.dotw;
+    int8_t hour  = now.hour;
+    int8_t min   = now.min;
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
 
     if (*solar_event == 1) {  // it's a sunrise right now
@@ -159,12 +158,12 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         min = set_minute;
     } else {
         if (*solar_event == 0) {  // it's a sunset right now
-            // printf("it's a sunset now\n");
             // * the next solar_event is a sunrise and will occur tomorrow. Get tomorrow's solar events:
             //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
             //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
+            // printf("it's a sunset now\n");
             today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
-
+            dotw = get_dotw(year, month, day);
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                    year, month, day, *utc_offset, *latitude, *longitude);
             *solar_event = 1;  // next alarm will be sunrise
@@ -196,6 +195,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                     // the next event is a rise tomorrow
                     // printf("it's after both sunrise and sunset today...\n");
                     today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
+                    dotw = get_dotw(year, month, day);
                     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                            year, month, day, *utc_offset, *latitude, *longitude);
                     *solar_event = 1;
@@ -216,6 +216,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         .year  = year,
         .month = month,
         .day   = day,
+        .dotw  = dotw,
         .hour  = hour,
         .min   = min,
         .sec   = 00
