@@ -41,14 +41,14 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
         sleep_ms(1000);
         if (*gnss_read_successful) {
             *gnss_configured = 1;
-            return 1;  // deinit was already called, simply return.
+            return 0;  // deinit was already called, simply return.
         }
         if (!buffer[0] || !buffer[BUFFER_LEN-1]) {  // crude check for some values being found
-            if (i > 60 && !*data_found) {
+            if (i > 60 && !(*data_found)) {
                 // printf("no signal found... this was buffer:\n----\n%s\n---\n", buffer);
                 // ~60 second timeout for any signal. if nothing detected on UART, abort.
                 gnss_deinit(pio, sm, offset);
-                return 0;
+                return 1;
             }
         } else {
             // copy buffer to avoid race condition
@@ -58,6 +58,10 @@ int gnss_manage_connection(char *buffer, char **sentences, double *latitude,
             parse_buffer(strdup(buffer), sentences, latitude, longitude, north, east, utc_offset,
                          gnss_read_successful, time_only, pio, sm, offset, gnss_fix);
         }
+    }
+    if (!(*gnss_read_successful)) {
+        gnss_deinit(pio, sm, offset);
+        return 1;
     }
     return 0;
 }

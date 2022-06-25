@@ -31,8 +31,6 @@ int main(void) {
             read_actuate_alarm_sequence(&solar_event, &latitude, &longitude, &north, &east,
                                         &utc_offset, &baud_rate, new_baud, &gnss_configured, &config_gnss,
                                         &consec_conn_failures, &data_found, &time_only);
-            reenable_interrupts_for(GPIO_TOGGLE_UP_PIN, 0x0C);
-            reenable_interrupts_for(GPIO_TOGGLE_DOWN_PIN, 0x0C);
         }
         sleep_ms(30000);  // sleep for 30 seconds. Being 30s late to a solar event is acceptable. Toggle IRQs are immediate.
     }
@@ -41,8 +39,6 @@ int main(void) {
 
 void alarm_callback(void) {
     rtc_disable_alarm();
-    disable_all_interrupts_for(GPIO_TOGGLE_UP_PIN);  // prevent further irqs while handling this one
-    disable_all_interrupts_for(GPIO_TOGGLE_DOWN_PIN);  // prevent further irqs while handling this one
     alarm_detected = 1;
 }
 
