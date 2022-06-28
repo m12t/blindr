@@ -25,5 +25,8 @@ void find_boundary(uint gpio);
 void enable_automation(void);
 void disable_automation(void);
 void dance(uint sleep_time);
+void set_rise_times(uint consistent_rise, int8_t *hour, int8_t *min,
+                    int8_t consistent_rise_hour, int8_t consistent_rise_minute,
+                    int8_t rise_hour, int8_t rise_minute);
 
 #endif
