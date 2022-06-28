@@ -145,6 +145,17 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
     int8_t min   = now.min;
     int8_t rise_hour, rise_minute, set_hour, set_minute;  // solar event times that are populated by `calculate_solar_events()`
 
+    // for the consistent alarm wakeup time (8:00 AM in this case)
+    uint consistent_rise = 1;  // 0 = False, use solar rise always. 1 = true, always use the set time.
+    int8_t consistent_rise_hour = 8, consistent_rise_minute = 0;
+
+    // NOTE: A weekly schedule could be implemented here that uses RTC DOTW
+    //       to customize the rise and set times for each day of the week. set consistent_rise = 2 for weekends only?\
+
+    // NOTE: a min_rise_time could also be implemented whereby the blinds will open at sunrise if possible,
+    //       but no earlier than a given time, say 6:00 AM. Could also go 8 hours of sleep balanced around
+    //       sunrise and sunset... lots of possibilities.
+
     if (*solar_event == 1) {  // it's a sunrise right now
         // printf("it's a sunrise now\n");
         calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
@@ -163,8 +174,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                    year, month, day, *utc_offset, *latitude, *longitude);
             *solar_event = 1;  // next alarm will be sunrise
-            hour = rise_hour;
-            min = rise_minute;
+            set_rise_times(consistent_rise, &hour, &min, consistent_rise_hour, consistent_rise_minute, rise_hour, rise_minute);
         } else {  // solar_event == -1 meaning it's startup or the last solar_event was invalid.
             // the time is after both the sunrise and sunset (or there were neither)...
             // get the sunrise time tomorrow. In the edge case there is none (ie. high
@@ -179,8 +189,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                     // the next solar event is a sunrise today.
                     // printf("it's still before the sunrise today...\n");
                     *solar_event = 1;
-                    hour = rise_hour;
-                    min = rise_minute;
+                    set_rise_times(consistent_rise, &hour, &min, consistent_rise_hour, consistent_rise_minute, rise_hour, rise_minute);
                 } else if (set_hour > now.hour || (set_hour == now.hour && set_minute > now.min)) {
                     // the next solar event is a sunset today.
                     // printf("it's still before the sunset today...\n");
@@ -195,8 +204,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                            year, month, day, *utc_offset, *latitude, *longitude);
                     *solar_event = 1;
-                    hour = rise_hour;
-                    min = rise_minute;
+                    set_rise_times(consistent_rise, &hour, &min, consistent_rise_hour, consistent_rise_minute, rise_hour, rise_minute);
                 }
             } else {
                 // printf("there are NO solar events today...\n");
@@ -225,6 +233,19 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
         // printf("local time is: %d/%d/%d %d:%d:%d\n", now.month, now.day, now.year, now.hour, now.min, now.sec);  // rbf
         // printf("setting the next alarm for: %d/%d/%d %d:%d:%d\n", next_alarm.month, next_alarm.day, next_alarm.year,
         //     next_alarm.hour, next_alarm.min, next_alarm.sec);  // rbf
+    }
+}
+
+
+void set_rise_times(uint consistent_rise, int8_t *hour, int8_t *min,
+                    int8_t consistent_rise_hour, int8_t consistent_rise_minute,
+                    int8_t rise_hour, int8_t rise_minute) {
+    if (consistent_rise == 1) {
+        *hour = consistent_rise_hour;
+        *min  = consistent_rise_minute;
+    } else {
+        *hour = rise_hour;
+        *min  = rise_minute;
     }
 }
 
