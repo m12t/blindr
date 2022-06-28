@@ -159,7 +159,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
             //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
             // printf("it's a sunset now\n");
             today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
-            dotw = get_dotw(year, month, day);
+            dotw = get_dotw(year, month, day);  // or dotw = (dotw + 1) % 7;
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                    year, month, day, *utc_offset, *latitude, *longitude);
             *solar_event = 1;  // next alarm will be sunrise
@@ -191,7 +191,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
                     // the next event is a rise tomorrow
                     // printf("it's after both sunrise and sunset today...\n");
                     today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
-                    dotw = get_dotw(year, month, day);
+                    dotw = get_dotw(year, month, day);  // or dotw = (dotw + 1) % 7;
                     calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
                                            year, month, day, *utc_offset, *latitude, *longitude);
                     *solar_event = 1;

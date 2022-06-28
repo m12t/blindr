@@ -181,7 +181,7 @@ int parse_buffer(char *buffer, char **sentences, double *latitude, double *longi
                 // only parse if there is a fix
                 parse_zda(fields, &year, &month, &day, &hour, &min, &sec);
                 // printf("%d/%d/%d %d:%d:%d\n", year, month, day, hour, min, sec);
-                if ((time_only || *latitude && *longitude) && year && month && day && (day || hour || sec)) {
+                if ((time_only || (*latitude && *longitude)) && year && month && day && (day || hour || sec)) {
                     // last check the values are atleast nonzero.
                     // NOTE: for the (day || hour || sec), day hour and sec == 0 are valid,
                     // but the next second won't be for long (<1s) so loop again until it is.
