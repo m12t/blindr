@@ -102,7 +102,7 @@ void actuate(int solar_event) {
             // it's a sunset right now... close the blinds
             step_to_position(&current_position, boundary_low, boundary_high);
         } else {
-            // do nothing
+            // do nothing (the solar event is invalid with `-1`)
         }
     }
     // printf("current position after (potential) actuation: %d\n", current_position);
