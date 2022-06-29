@@ -28,7 +28,13 @@ The only direct input the user has with the system is through the 3 position tog
 
 
 ## Hardware
-I have some CAD and STL files for the stepper motor housing and a driveshaft I drafted up that will work if you happen to have the exact model of stepper (Shinano Kenshi STP-42D201-37 with 14 tooth gear) and blinds (Home Depot Home Decorators Collection) as me. I 3D printed the mount and driveshaft in PLA, though you will likely have to design your own or find another method of getting your stepper to actually turn your blinds. This repo focuses on the code, however, which _is_ compatable with any bipolar stepper and any mounting system you might use.
+There are CAD and STL files for the stepper motor housing and a driveshaft (shown below) that I drafted up for this project. They will work if you happen to have the exact model of stepper (Shinano Kenshi STP-42D201-37 with 14 tooth gear) and blinds (Home Depot Home Decorators Collection) as me. I 3D printed the mount and driveshaft in PLA, though you will likely have to design your own or find another method of getting your stepper to actually turn your blinds. There is also a housing for the Pico uC and Big Easy Driver (also shown below). This repo focuses on the code, however, which _is_ compatable with any bipolar stepper and any mounting system you might use.
+
+Stepper housing and drive shaft:
+![Stepper housing and drive shaft](https://github.com/mrwillett/blindr/blob/main/cad/fcstd/stepper_housing_assy.png)
+
+Case for the electronics:
+![Case for the electronics](https://github.com/mrwillett/blindr/blob/main/cad/fcstd/electronics_case.png)
 
 
 # BOM (2022 prices)
