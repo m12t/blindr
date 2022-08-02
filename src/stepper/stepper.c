@@ -92,7 +92,7 @@ int step_to_position(int *current_position, int desired_position, int BOUNDARY_H
     while (*current_position != desired_position) {
         // printf("stepping to position\n");
         direction = *current_position > desired_position ? 1 : 0;  // change this to whatever ends up being up and down on the blinds
-        single_step(current_position, direction, 40000);  // roughly 1500 steps from midpoint to boundary, (60 second desired transit time) / 1500 => 40000us per step
+        single_step(current_position, direction, 4000);  // roughly 1500 steps from midpoint to boundary, (6 second desired transit time) / 1500 => 4000us per step
     }
 
     sleep_stepper();

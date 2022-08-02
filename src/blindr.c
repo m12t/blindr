@@ -100,7 +100,7 @@ void actuate(int solar_event) {
             step_to_position(&current_position, boundary_high/2, boundary_high);
         } else if (solar_event == 0) {
             // it's a sunset right now... close the blinds in the appropriate direction
-            step_to_position(&current_position, boundary_dir*boundary_high, boundary_high);
+            step_to_position(&current_position, boundary_dir * boundary_high, boundary_high);
         } else {
             // do nothing (the solar event is invalid with `-1`)
         }
@@ -278,9 +278,10 @@ void dance(uint sleep_time) {
     uint starting_pos = current_position;
     step_to_position(&current_position, (uint)(boundary_high/2), boundary_high);
     busy_wait_ms(sleep_time);
-    step_to_position(&current_position, boundary_low, boundary_high);
+    step_to_position(&current_position, boundary_dir * boundary_high, boundary_high);
     busy_wait_ms(sleep_time);
-    step_to_position(&current_position, boundary_high, boundary_high);
+    boundary_dir = !boundary_dir;  // toggle the direction so the next close is at the other boundary
+    step_to_position(&current_position, boundary_dir * boundary_high, boundary_high);
     busy_wait_ms(sleep_time);
     step_to_position(&current_position, (uint)(boundary_high/2), boundary_high);
     busy_wait_ms(2 * sleep_time);
