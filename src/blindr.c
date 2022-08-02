@@ -2,7 +2,7 @@
 
 // global vars
 uint alarm_detected=1;  // flag that gets set by the alarm callback to cause a runthrough of the gnss read, blind actuation, and next alarm setting sequence.
-uint low_boundary_set=0, high_boundary_set=0;  // flag for whether the respective boundary is set or not
+uint boundary_dir=0, low_boundary_set=0, high_boundary_set=0;  // flags for direction and whether the respective boundary is set or not
 int boundary_low=0, boundary_high=0, current_position=0;  // stepper positioning
 uint automation_enabled = 0;  // flag useful for whether or not to operate the blinds automatically.
 
@@ -99,8 +99,8 @@ void actuate(int solar_event) {
             // it's a sunrise right now... open the blinds
             step_to_position(&current_position, boundary_high/2, boundary_high);
         } else if (solar_event == 0) {
-            // it's a sunset right now... close the blinds
-            step_to_position(&current_position, boundary_low, boundary_high);
+            // it's a sunset right now... close the blinds in the appropriate direction
+            step_to_position(&current_position, boundary_dir*boundary_high, boundary_high);
         } else {
             // do nothing (the solar event is invalid with `-1`)
         }
@@ -169,6 +169,7 @@ void read_actuate_alarm_sequence(int *solar_event, double *latitude, double *lon
             //   - initialize tomorrow's variables to today and send the pointers to today_is_tomorrow() which will
             //     update them as needed. Use tomorrow's date to set an alarm for either the sunrise time or 00:00
             // printf("it's a sunset now\n");
+            boundary_dir = !boundary_dir;  // toggle the direction so the next close is at the other boundary
             today_is_tomorrow(&year, &month, &day, NULL, *utc_offset);  // modify the day, month (if applicable), year (if applicable) to tomorrow's dd/mm/yyyy
             dotw = get_dotw(year, month, day);  // or dotw = (dotw + 1) % 7;
             calculate_solar_events(&rise_hour, &rise_minute, &set_hour, &set_minute,
